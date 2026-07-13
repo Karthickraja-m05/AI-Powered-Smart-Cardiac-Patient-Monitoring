@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CardioTrack — Patient Health Tracking Dashboard</title>
+  <meta name="description" content="Track patient cardiovascular health over time with real-time heart disease risk predictions and interactive time-series analysis." />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+  <!-- ═════════════════════════════════════════════════════════════
+       TOAST CONTAINER
+       ═════════════════════════════════════════════════════════════ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ═════════════════════════════════════════════════════════════
+       ADD PATIENT MODAL
+       ═════════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="addPatientModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">➕ Add New Patient</h3>
+        <button class="btn-ghost" onclick="closeModal('addPatientModal')" aria-label="Close modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-2">
+          <label class="form-label" for="patientNameInput">Patient Name</label>
+          <input type="text" class="form-input" id="patientNameInput" placeholder="e.g. John Smith" autocomplete="off" />
+        </div>
+        <div class="form-group mb-2">
+          <label class="form-label" for="patientIdInput">Patient ID (optional)</label>
+          <input type="text" class="form-input" id="patientIdInput" placeholder="e.g. PAT-001" autocomplete="off" />
+        </div>
+        <div class="form-group mb-2">
+          <label class="form-label" for="patientDobInput">Date of Birth</label>
+          <input type="date" class="form-input" id="patientDobInput" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="patientGenderInput">Gender</label>
+          <div class="radio-group">
+            <div class="radio-option">
+              <input type="radio" name="patientGender" id="genderMale" value="1" checked />
+              <label for="genderMale">Male</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" name="patientGender" id="genderFemale" value="0" />
+              <label for="genderFemale">Female</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('addPatientModal')">Cancel</button>
+        <button class="btn btn-primary" id="savePatientBtn" onclick="saveNewPatient()">Add Patient</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════
+       DELETE CONFIRM MODAL
+       ═════════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Confirm Delete</h3>
+        <button class="btn-ghost" onclick="closeModal('confirmModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage">Are you sure?</p>
+        <div class="confirm-actions">
+          <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+          <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════
+       APP LAYOUT
+       ═════════════════════════════════════════════════════════════ -->
+  <div class="app-layout">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <div class="logo-icon">💓</div>
+          <h1>CardioTrack</h1>
+        </div>
+        <p class="sidebar-subtitle">Patient Health Monitoring</p>
+      </div>
+
+      <div class="sidebar-search">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="patientSearch" placeholder="Search patients..." oninput="filterPatients()" />
+        </div>
+      </div>
+
+      <div class="patient-list-header">
+        <span>Patients</span>
+        <button class="btn-add-patient" onclick="openModal('addPatientModal')">
+          <span>+</span> Add New
+        </button>
+      </div>
+
+      <div class="patient-list" id="patientList">
+        <!-- Populated by JS -->
+      </div>
+    </aside>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="main-content" id="mainContent">
+
+      <!-- Welcome State (shown when no patient selected) -->
+      <div class="welcome-state" id="welcomeState">
+        <div class="welcome-icon">🫀</div>
+        <h2 class="welcome-title">Patient Health Tracker</h2>
+        <p class="welcome-desc">
+          Track patient cardiovascular health metrics over time.
+          Add patients, record clinical data at each visit, and monitor
+          how their heart disease risk evolves with interactive charts.
+        </p>
+        <button class="btn btn-primary" onclick="openModal('addPatientModal')">
+          + Add Your First Patient
+        </button>
+      </div>
+
+      <!-- Patient Dashboard (shown when a patient is selected) -->
+      <div class="hidden" id="patientDashboard">
+
+        <!-- Top Bar -->
+        <div class="top-bar">
+          <div class="top-bar-left">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+            <h2 id="dashboardTitle">Patient Dashboard</h2>
+            <p class="breadcrumb" id="dashboardBreadcrumb">Patient ID: —</p>
+          </div>
+          <div class="top-bar-right">
+            <button class="btn btn-secondary btn-sm" onclick="exportPatientCSV()">📥 Export CSV</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeletePatient()">🗑 Delete Patient</button>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards" id="summaryCards">
+          <div class="summary-card risk animate-slide-up stagger-1">
+            <div class="summary-card-label">Latest Risk Score</div>
+            <div class="summary-card-value" id="summaryRisk">—</div>
+            <div class="summary-card-change" id="summaryRiskChange"></div>
+          </div>
+          <div class="summary-card bp animate-slide-up stagger-2">
+            <div class="summary-card-label">Blood Pressure</div>
+            <div class="summary-card-value" id="summaryBP">—</div>
+            <div class="summary-card-change" id="summaryBPChange"></div>
+          </div>
+          <div class="summary-card chol animate-slide-up stagger-3">
+            <div class="summary-card-label">Cholesterol</div>
+            <div class="summary-card-value" id="summaryChol">—</div>
+            <div class="summary-card-change" id="summaryCholChange"></div>
+          </div>
+          <div class="summary-card hr animate-slide-up stagger-4">
+            <div class="summary-card-label">Max Heart Rate</div>
+            <div class="summary-card-value" id="summaryHR">—</div>
+            <div class="summary-card-change" id="summaryHRChange"></div>
+          </div>
+          <div class="summary-card records animate-slide-up stagger-5">
+            <div class="summary-card-label">Total Records</div>
+            <div class="summary-card-value" id="summaryRecords">0</div>
+            <div class="summary-card-change text-muted">visits logged</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid" id="chartsSection">
+          <!-- Risk Timeline -->
+          <div class="chart-card full-width animate-slide-up">
+            <div class="chart-header">
+              <span class="chart-title">📈 Heart Disease Risk Over Time</span>
+              <div class="tab-buttons" id="riskChartTabs">
+                <button class="tab-btn active" data-range="all" onclick="setChartRange('all')">All</button>
+                <button class="tab-btn" data-range="6m" onclick="setChartRange('6m')">6M</button>
+                <button class="tab-btn" data-range="1y" onclick="setChartRange('1y')">1Y</button>
+              </div>
+            </div>
+            <div class="chart-body" style="height: 280px;">
+              <canvas id="riskChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Vitals Trends -->
+          <div class="chart-card animate-slide-up">
+            <div class="chart-header">
+              <span class="chart-title">🩺 Blood Pressure & Cholesterol</span>
+            </div>
+            <div class="chart-body">
+              <canvas id="vitalsChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card animate-slide-up">
+            <div class="chart-header">
+              <span class="chart-title">❤️ Heart Rate & ST Depression</span>
+            </div>
+            <div class="chart-body">
+              <canvas id="heartChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Record Entry Form -->
+        <div class="card record-form-section animate-slide-up" id="recordFormCard">
+          <div class="card-header">
+            <span class="card-title">📝 Add Clinical Record</span>
+            <button class="btn btn-ghost btn-sm" id="toggleFormBtn" onclick="toggleRecordForm()">▼ Collapse</button>
+          </div>
+          <div class="card-body" id="recordFormBody">
+            <div class="form-grid" id="recordForm">
+              <!-- Date -->
+              <div class="form-group">
+                <label class="form-label" for="recordDate"><span class="label-icon">📅</span> Record Date</label>
+                <input type="date" class="form-input" id="recordDate" />
+              </div>
+
+              <!-- Age -->
+              <div class="form-group">
+                <label class="form-label"><span class="label-icon">🎂</span> Age (Years)</label>
+                <div class="form-range-wrapper">
+                  <input type="range" class="form-range" id="inputAge" min="20" max="100" value="55" oninput="updateRangeDisplay(this)" />
+                  <span class="range-value" id="inputAge_val">55</span>
+                </div>
+              </div>
+
+              <!-- Chest Pain Type -->
+              <div class="form-group">
+                <label class="form-label" for="inputCp"><span class="label-icon">💔</span> Chest Pain Type</label>
+                <select class="form-select" id="inputCp">
+                  <option value="0">Typical Angina</option>
+                  <option value="1">Atypical Angina</option>
+                  <option value="2" selected>Non-Anginal Pain</option>
+                  <option value="3">Asymptomatic</option>
+                </select>
+              </div>
+
+              <!-- Resting BP -->
+              <div class="form-group">
+                <label class="form-label"><span class="label-icon">🩺</span> Resting Blood Pressure (mmHg)</label>
+                <div class="form-range-wrapper">
+                  <input type="range" class="form-range" id="inputTrestbps" min="80" max="220" value="130" oninput="updateRangeDisplay(this)" />
+                  <span class="range-value" id="inputTrestbps_val">130</span>
+                </div>
+              </div>
+
+              <!-- Cholesterol -->
+              <div class="form-group">
+                <label class="form-label"><span class="label-icon">🧪</span> Cholesterol (mg/dL)</label>
+                <div class="form-range-wrapper">
+                  <input type="range" class="form-range" id="inputChol" min="100" max="600" value="250" oninput="updateRangeDisplay(this)" />
+                  <span class="range-value" id="inputChol_val">250</span>
+                </div>
+              </div>
+
+              <!-- Fasting Blood Sugar -->
+              <div class="form-group">
+                <label class="form-label"><span class="label-icon">🍬</span> Fasting Blood Sugar > 120</label>
+                <div class="radio-group">
+                  <div class="radio-option">
+                    <input type="radio" name="inputFbs" id="fbs0" value="0" checked />
+                    <label for="fbs0">Normal</label>
+                  </div>
+                  <div class="radio-option">
+                    <input type="radio" name="inputFbs" id="fbs1" value="1" />
+                    <label for="fbs1">Elevated</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ECG Result -->
+              <div class="form-group">
+                <label class="form-label" for="inputRestecg"><span class="label-icon">📈</span> Resting ECG Result</label>
+                <select class="form-select" id="inputRestecg">
+                  <option value="0">Normal</option>
+                  <option value="1">ST-T Wave Abnormality</option>
+                  <option value="2">Left Ventricular Hypertrophy</option>
+                </select>
+              </div>
+
+              <!-- Max Heart Rate -->
+              <div class="form-group">
+                <label class="form-label"><span class="label-icon">❤️</span> Maximum Heart Rate (bpm)</label>
+                <div class="form-range-wrapper">
+                  <input type="range" class="form-range" id="inputThalach" min="60" max="220" value="150" oninput="updateRangeDisplay(this)" />
+                  <span class="range-value" id="inputThalach_val">150</span>
+                </div>
+              </div>
+
+              <!-- Exercise Angina -->
+              <div class="form-group">
+                <label class="form-label"><span class="label-icon">🏃</span> Exercise Induced Angina</label>
+                <div class="radio-group">
+                  <div class="radio-option">
+                    <input type="radio" name="inputExang" id="exang0" value="0" checked />
+                    <label for="exang0">No</label>
+                  </div>
+                  <div class="radio-option">
+                    <input type="radio" name="inputExang" id="exang1" value="1" />
+                    <label for="exang1">Yes</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ST Depression -->
+              <div class="form-group">
+                <label class="form-label"><span class="label-icon">📉</span> ST Depression (Oldpeak)</label>
+                <div class="form-range-wrapper">
+                  <input type="range" class="form-range" id="inputOldpeak" min="0" max="7" step="0.1" value="1.0" oninput="updateRangeDisplay(this)" />
+                  <span class="range-value" id="inputOldpeak_val">1.0</span>
+                </div>
+              </div>
+
+              <!-- ST Slope -->
+              <div class="form-group">
+                <label class="form-label" for="inputSlope"><span class="label-icon">📊</span> ST Segment Slope</label>
+                <select class="form-select" id="inputSlope">
+                  <option value="0">Upsloping</option>
+                  <option value="1" selected>Flat</option>
+                  <option value="2">Downsloping</option>
+                </select>
+              </div>
+
+              <!-- Major Vessels -->
+              <div class="form-group">
+                <label class="form-label"><span class="label-icon">🫀</span> Major Vessels (Fluoroscopy)</label>
+                <div class="form-range-wrapper">
+                  <input type="range" class="form-range" id="inputCa" min="0" max="4" step="1" value="0" oninput="updateRangeDisplay(this)" />
+                  <span class="range-value" id="inputCa_val">0</span>
+                </div>
+              </div>
+
+              <!-- Thalassemia -->
+              <div class="form-group">
+                <label class="form-label" for="inputThal"><span class="label-icon">🩸</span> Thalassemia Status</label>
+                <select class="form-select" id="inputThal">
+                  <option value="0">Normal</option>
+                  <option value="1">Fixed Defect</option>
+                  <option value="2" selected>Reversible Defect</option>
+                  <option value="3">Unknown / Other</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Prediction Preview -->
+            <div class="prediction-result hidden" id="predictionPreview">
+              <div class="prediction-header">
+                <span class="prediction-title">🔮 Predicted Risk</span>
+                <span class="prediction-status" id="predictionStatus"></span>
+              </div>
+              <div class="prediction-bars">
+                <div class="prediction-bar-row">
+                  <span class="prediction-bar-label">Healthy</span>
+                  <div class="prediction-bar-track">
+                    <div class="prediction-bar-fill healthy" id="predBarHealthy" style="width: 50%;"></div>
+                  </div>
+                  <span class="prediction-bar-value" id="predValHealthy">50%</span>
+                </div>
+                <div class="prediction-bar-row">
+                  <span class="prediction-bar-label">Heart Disease</span>
+                  <div class="prediction-bar-track">
+                    <div class="prediction-bar-fill disease" id="predBarDisease" style="width: 50%;"></div>
+                  </div>
+                  <span class="prediction-bar-value" id="predValDisease">50%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-secondary" onclick="previewPrediction()">🔮 Preview Risk</button>
+              <button class="btn btn-primary" onclick="saveRecord()">💾 Save Record</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Records Table -->
+        <div class="card animate-slide-up" id="recordsTableCard">
+          <div class="card-header">
+            <span class="card-title">📋 Record History</span>
+            <span class="text-muted" id="recordsCount" style="font-size: 0.75rem;"></span>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="table-wrapper">
+              <table class="data-table" id="recordsTable">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Age</th>
+                    <th>BP</th>
+                    <th>Chol</th>
+                    <th>HR</th>
+                    <th>ST Dep.</th>
+                    <th>Chest Pain</th>
+                    <th>Risk Score</th>
+                    <th>Prediction</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="recordsTableBody">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+            <div class="empty-state hidden" id="noRecordsState">
+              <div class="empty-state-icon">📋</div>
+              <p class="empty-state-title">No records yet</p>
+              <p class="empty-state-desc">Add a clinical record above to start tracking this patient's health over time.</p>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /patientDashboard -->
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,532 @@
+================================================================================
+                        CARDIOSENSE AI — PROJECT DESCRIPTION
+          AI-Powered Smart Cardiac Patient Monitoring & Clinical Decision
+                              Support System
+================================================================================
+
+GitHub Repository Name:  cardiosense-ai
+
+================================================================================
+  1. PROJECT OVERVIEW
+================================================================================
+
+CardioSense AI is a full-stack, AI-powered smart cardiac patient monitoring and
+clinical decision support system designed for hospitals and cardiac care units.
+It integrates real-time IoT vital sign monitoring (via ESP32 microcontrollers),
+machine learning-based cardiovascular risk prediction, and a modern web-based
+clinical dashboard — all in one unified platform.
+
+The system continuously monitors patients' vital signs (heart rate, SpO2, blood
+pressure, temperature, ECG, respiratory rate), runs AI predictions to classify
+cardiovascular risk levels, and triggers intelligent clinical alerts when
+abnormal readings or high-risk patterns are detected.
+
+⚕️ MEDICAL DISCLAIMER: This is a clinical decision support tool. It does NOT
+diagnose medical conditions or replace professional medical judgment. All AI
+predictions and risk assessments must be reviewed and validated by licensed
+healthcare professionals.
+
+
+================================================================================
+  2. REPOSITORY NAME
+================================================================================
+
+    Recommended Repository Name:  cardiosense-ai
+
+    Alternative Names:
+      - cardiosense-ai-platform
+      - cardiosense-cardiac-monitoring
+      - smart-cardiac-monitor
+
+
+================================================================================
+  3. TECHNOLOGY STACK
+================================================================================
+
+  BACKEND:
+    - Language:       Python 3.10+
+    - Framework:      FastAPI (v0.115.0)
+    - Server:         Uvicorn (ASGI)
+    - Database:       SQLite (dev) / PostgreSQL 16 (production)
+    - ORM:            SQLAlchemy 2.0
+    - Migrations:     Alembic
+    - Authentication: JWT (python-jose) + bcrypt password hashing
+    - Validation:     Pydantic v2 + Pydantic Settings
+    - WebSocket:      websockets 12.0
+
+  FRONTEND:
+    - Language:       TypeScript
+    - Framework:      React 18 (Vite 5.4 build tool)
+    - Routing:        React Router v6
+    - State Mgmt:     Zustand
+    - HTTP Client:    Axios
+    - Charts:         Recharts
+    - Animations:     Framer Motion
+    - Icons:          Lucide React
+    - Styling:        Tailwind CSS v3
+    - Notifications:  React Hot Toast
+
+  MACHINE LEARNING:
+    - scikit-learn 1.5.1 (Logistic Regression, Random Forest)
+    - XGBoost 2.1.0
+    - LightGBM 4.5.0
+    - CatBoost 1.2.5
+    - SHAP 0.45.1 (Explainability)
+    - NumPy, Pandas, Joblib
+
+  IoT / EMBEDDED:
+    - Microcontroller: ESP32 DevKit V1
+    - Sensors:         MAX30102 (HR + SpO2), AD8232 (ECG), DS18B20 (Temp)
+    - Communication:   WiFi HTTP POST (ArduinoJson)
+    - IDE:             Arduino IDE
+
+  DEPLOYMENT / DEVOPS:
+    - Docker + Docker Compose
+    - Nginx (Reverse Proxy)
+    - PostgreSQL 16 Alpine (Containerized)
+
+  REPORTS:
+    - openpyxl (Excel reports)
+    - reportlab (PDF reports)
+    - qrcode (Patient QR codes)
+
+
+================================================================================
+  4. PROJECT ARCHITECTURE
+================================================================================
+
+  cardiosense-ai/
+  ├── backend/                    # FastAPI Backend Application
+  │   ├── app/
+  │   │   ├── __init__.py
+  │   │   ├── main.py             # FastAPI app entry point, lifespan, CORS, routers
+  │   │   ├── config.py           # Pydantic Settings (env-based configuration)
+  │   │   ├── database.py         # SQLAlchemy engine, session, Base model
+  │   │   ├── seed.py             # Demo data seeder (users, patients, vitals)
+  │   │   ├── models/             # SQLAlchemy ORM Models
+  │   │   │   ├── __init__.py
+  │   │   │   ├── user.py         # User model (roles: admin, doctor, nurse, etc.)
+  │   │   │   ├── patient.py      # Patient model (demographics, medical history)
+  │   │   │   ├── vitals.py       # VitalSign model (HR, SpO2, BP, ECG, temp)
+  │   │   │   ├── prediction.py   # AI Prediction model (risk scores, SHAP)
+  │   │   │   ├── alert.py        # Clinical Alert model (emergency, thresholds)
+  │   │   │   ├── medication.py   # Medication tracking model
+  │   │   │   ├── symptom.py      # Symptom recording model
+  │   │   │   ├── hourly_log.py   # Hourly aggregated vital logs
+  │   │   │   ├── appointment.py  # Appointment scheduling model
+  │   │   │   └── notification.py # Notification model
+  │   │   ├── schemas/            # Pydantic Request/Response Schemas
+  │   │   │   ├── user_schema.py
+  │   │   │   ├── patient_schema.py
+  │   │   │   ├── vitals_schema.py
+  │   │   │   ├── prediction_schema.py
+  │   │   │   ├── alert_schema.py
+  │   │   │   ├── medication_schema.py
+  │   │   │   ├── symptom_schema.py
+  │   │   │   └── dashboard_schema.py
+  │   │   ├── routers/            # API Route Handlers
+  │   │   │   ├── auth.py         # Login, register, profile, JWT
+  │   │   │   ├── patients.py     # CRUD patients, discharge, file uploads
+  │   │   │   ├── vitals.py       # Record vitals (manual + IoT), history
+  │   │   │   ├── predictions.py  # Run AI predictions, risk assessment
+  │   │   │   ├── symptoms.py     # Record patient symptoms
+  │   │   │   ├── medications.py  # Medication management, administration
+  │   │   │   └── dashboard.py    # Stats, charts, alerts, emergency
+  │   │   └── services/           # Business Logic Layer
+  │   │       ├── auth_service.py       # JWT, password hashing, role checks
+  │   │       ├── prediction_service.py # ML model loading, prediction, SHAP
+  │   │       └── alert_service.py      # Vital threshold monitoring, alerts
+  │   ├── uploads/                # Uploaded files (ECG, X-rays, reports)
+  │   ├── requirements.txt        # Full Python dependencies
+  │   ├── requirements_light.txt  # Lightweight deps (without heavy ML libs)
+  │   └── Dockerfile              # Backend container image
+  │
+  ├── frontend/                   # React + TypeScript Frontend
+  │   ├── index.html              # HTML entry point (Google Fonts, SEO meta)
+  │   ├── src/
+  │   │   ├── main.tsx            # React DOM entry point
+  │   │   ├── App.tsx             # Router setup, protected routes
+  │   │   ├── index.css           # Global styles (Tailwind + custom)
+  │   │   ├── pages/
+  │   │   │   ├── LoginPage.tsx       # Auth login with demo credentials
+  │   │   │   ├── AdminDashboard.tsx  # Stats, charts, alerts overview
+  │   │   │   ├── PatientList.tsx     # Patient list with search/filter
+  │   │   │   ├── PatientDetail.tsx   # Individual patient view + vitals
+  │   │   │   └── LiveMonitoring.tsx  # Real-time vital sign monitoring
+  │   │   ├── components/
+  │   │   │   └── DashboardLayout.tsx # Sidebar navigation layout
+  │   │   ├── services/
+  │   │   │   └── api.ts          # Axios client, API functions, JWT interceptor
+  │   │   ├── store/
+  │   │   │   └── authStore.ts    # Zustand auth state (login, logout, persist)
+  │   │   └── types/
+  │   │       └── index.ts        # TypeScript interfaces for all entities
+  │   ├── vite.config.ts          # Vite config (proxy /api → backend:8000)
+  │   ├── tailwind.config.js      # Custom theme colors, fonts, animations
+  │   ├── tsconfig.json
+  │   ├── package.json
+  │   └── Dockerfile              # Frontend container image (Nginx)
+  │
+  ├── ml/                         # Machine Learning Module
+  │   └── train_models.py         # Multi-model training pipeline
+  │
+  ├── dashboard/                  # Offline/Standalone Dashboard
+  │   ├── index.html              # Self-contained HTML dashboard
+  │   ├── app.js                  # Dashboard logic (client-side prediction)
+  │   ├── style.css               # Dashboard styles
+  │   ├── model_weights.json      # Exported logistic regression weights
+  │   └── export_model_weights.py # Script to export model for client-side use
+  │
+  ├── iot/                        # IoT / Embedded Firmware
+  │   └── esp32_firmware/
+  │       └── cardiosense_monitor.ino  # ESP32 Arduino firmware
+  │
+  ├── docker-compose.yml          # Multi-container orchestration
+  ├── nginx.conf                  # Nginx reverse proxy config
+  ├── .env.example                # Environment variable template
+  ├── heart.csv                   # UCI Heart Disease dataset (training data)
+  ├── heart_model.pkl             # Pre-trained ML model (fallback)
+  ├── scaler.pkl                  # Feature scaler (fallback)
+  └── train_model.py              # Standalone training script
+
+
+================================================================================
+  5. CORE FEATURES
+================================================================================
+
+  5.1 AUTHENTICATION & AUTHORIZATION
+  -----------------------------------
+  - JWT-based authentication with 8-hour token expiry
+  - bcrypt password hashing
+  - Role-based access control (RBAC):
+      • Super Admin       — Full system access
+      • Hospital Admin    — Hospital-wide management
+      • Doctor            — Patient care + predictions
+      • Nurse             — Vitals recording + medications
+      • Receptionist      — Patient registration
+      • Patient           — View own data
+  - OAuth2 password bearer token flow
+  - Auto-redirect on 401 (token expiry)
+
+  5.2 PATIENT MANAGEMENT
+  -----------------------
+  - Comprehensive patient records:
+      • Demographics (name, DOB, age, gender, blood group)
+      • Body metrics (height, weight, BMI)
+      • Contact & emergency contacts
+      • Insurance information
+      • Hospital assignment (ward, room, bed, doctor, nurse)
+  - Patient statuses: Admitted, Discharged, ICU, Emergency, Outpatient
+  - Medical history, allergies, surgical history, family history
+  - Risk factors: smoker, alcohol, hypertension, diabetes, kidney disease
+  - File uploads: ECG, X-ray, MRI, CT scan, lab reports, prescriptions
+  - Auto-generated unique Patient UID (PAT-XXXXX)
+  - QR code generation for patient identification
+  - Patient search and filtering
+
+  5.3 REAL-TIME VITAL SIGN MONITORING
+  ------------------------------------
+  - Supported vital parameters:
+      • Heart Rate (bpm)
+      • SpO2 / Oxygen Saturation (%)
+      • Body Temperature (°C)
+      • Blood Pressure (Systolic/Diastolic mmHg)
+      • Respiratory Rate (breaths/min)
+      • Pulse
+      • ECG data (waveform array)
+      • Pain level (0-10 scale)
+      • Stress level
+  - Data sources:
+      • Manual entry by nurses/doctors
+      • IoT devices (ESP32 via HTTP POST)
+  - Real-time live monitoring dashboard
+  - Vital sign history with time-range queries
+  - Latest vitals quick-view per patient
+  - 5-second auto-refresh on monitoring screen
+
+  5.4 AI-POWERED CARDIOVASCULAR RISK PREDICTION
+  -----------------------------------------------
+  - UCI Heart Disease dataset (13 clinical features):
+      • Age, Sex, Chest Pain Type, Resting BP, Cholesterol
+      • Fasting Blood Sugar, Resting ECG, Max Heart Rate
+      • Exercise-Induced Angina, ST Depression, ST Slope
+      • Number of Major Vessels, Thalassemia
+  - Multi-model comparison pipeline:
+      • Logistic Regression
+      • Random Forest
+      • XGBoost
+      • LightGBM
+      • CatBoost
+  - Automatic best model selection (by F1 + Accuracy)
+  - Risk classification levels:
+      • LOW      (0-24% probability)
+      • MEDIUM   (25-49% probability)
+      • HIGH     (50-74% probability)
+      • CRITICAL (75-100% probability)
+  - Feature importance / SHAP-based explainability
+  - Top 5 risk factors displayed per prediction
+  - Prediction history stored per patient
+  - Fallback: client-side prediction using exported model weights
+
+  5.5 INTELLIGENT CLINICAL ALERT SYSTEM
+  ---------------------------------------
+  - Automated threshold-based alerts:
+      • Bradycardia:        HR < 40 bpm
+      • Tachycardia:        HR > 150 bpm
+      • Hypoxemia:          SpO2 < 90% (Emergency if < 85%)
+      • Hyperthermia:       Temp > 39.5°C (Critical if > 40.5°C)
+      • Hypertensive Crisis: SBP > 180 mmHg
+      • Hypotension:        SBP < 80 mmHg
+      • Bradypnea:          RR < 8 breaths/min
+      • Tachypnea:          RR > 30 breaths/min
+  - AI risk alerts (triggered when risk score >= 50%)
+  - Emergency button alerts (from IoT device)
+  - Alert severity levels: Info, Warning, Critical, Emergency
+  - Alert acknowledgment workflow
+  - Configurable thresholds via environment variables
+
+  5.6 SYMPTOM TRACKING
+  ---------------------
+  - Record patient symptoms:
+      • Chest pain, breathing difficulty, shortness of breath
+      • Palpitations, dizziness, fatigue
+      • Sweating, fever
+      • Pain score (0-10)
+      • Free-text notes
+  - Symptom history per patient
+
+  5.7 MEDICATION MANAGEMENT
+  --------------------------
+  - Medication records per patient:
+      • Medicine name, dose, frequency, route
+      • Status tracking (active, completed, discontinued)
+      • Doses given / missed / total
+      • Administration timestamps
+      • Special instructions
+      • Next scheduled dose
+  - Medication administration logging
+
+  5.8 ADMIN DASHBOARD
+  --------------------
+  - Real-time statistics:
+      • Total patients, doctors, nurses
+      • Today's admissions, ICU patients
+      • Critical/High/Medium/Low risk counts
+      • Emergency cases today
+      • Bed occupancy percentage
+  - Interactive charts (Recharts):
+      • Admissions trend (Area chart)
+      • Risk distribution (Pie chart)
+      • Hourly emergencies (Bar chart)
+      • Monthly trends (Line chart)
+  - Live alert feed with acknowledgment
+  - Auto-refresh every 30 seconds
+
+  5.9 OFFLINE DASHBOARD (CardioTrack)
+  ------------------------------------
+  - Standalone HTML/JS/CSS dashboard
+  - Client-side cardiovascular risk prediction
+  - Works without backend connectivity
+  - Exported model weights (JSON format)
+  - Mounted at /cardiotrack endpoint
+
+  5.10 IoT INTEGRATION (ESP32)
+  -----------------------------
+  - ESP32 DevKit V1 firmware
+  - Hardware sensors:
+      • MAX30102 — Heart Rate + SpO2 (I2C)
+      • AD8232 — ECG Module (Analog)
+      • DS18B20 — Temperature (OneWire)
+      • Blood Pressure Sensor (Analog)
+  - Emergency button (GPIO)
+  - WiFi-based HTTP POST to backend API
+  - 3-second data transmission interval
+  - 50Hz ECG sampling (50-point buffer)
+  - ArduinoJson payload formatting
+  - Automatic alert parsing from server response
+
+
+================================================================================
+  6. API ENDPOINTS
+================================================================================
+
+  AUTHENTICATION:
+    POST   /api/auth/login           — Login (username + password → JWT)
+    POST   /api/auth/register        — Register new user
+    GET    /api/auth/me              — Get current user profile
+    PUT    /api/auth/profile         — Update user profile
+    GET    /api/auth/users           — List users (filter by role)
+
+  PATIENTS:
+    GET    /api/patients             — List patients (paginated, filterable)
+    POST   /api/patients             — Create new patient
+    GET    /api/patients/{id}        — Get patient details
+    PUT    /api/patients/{id}        — Update patient
+    DELETE /api/patients/{id}        — Delete patient
+    POST   /api/patients/{id}/discharge — Discharge patient
+
+  VITAL SIGNS:
+    POST   /api/vitals               — Record vital signs (manual)
+    POST   /api/vitals/iot           — Record vital signs (IoT device)
+    GET    /api/vitals/{patient_id}  — Get vital history (optional hours filter)
+    GET    /api/vitals/{patient_id}/latest — Get latest vitals
+
+  PREDICTIONS:
+    POST   /api/predictions          — Run AI risk prediction
+    GET    /api/predictions/{patient_id} — Get prediction history
+    GET    /api/predictions/{patient_id}/latest — Get latest prediction
+
+  SYMPTOMS:
+    POST   /api/symptoms             — Record symptoms
+    GET    /api/symptoms/{patient_id} — Get symptom history
+
+  MEDICATIONS:
+    POST   /api/medications          — Create medication record
+    GET    /api/medications/{patient_id} — Get medications (active filter)
+    PUT    /api/medications/{id}     — Update medication
+    POST   /api/medications/{id}/administer — Log medication administration
+
+  DASHBOARD:
+    GET    /api/dashboard/stats      — Get dashboard statistics
+    GET    /api/dashboard/charts     — Get chart data
+    GET    /api/dashboard/alerts     — Get recent alerts
+    POST   /api/dashboard/alerts/{id}/acknowledge — Acknowledge alert
+
+  HEALTH:
+    GET    /api/health               — Health check endpoint
+
+  DOCUMENTATION:
+    GET    /docs                     — Swagger UI (interactive API docs)
+    GET    /redoc                    — ReDoc (alternative API docs)
+
+
+================================================================================
+  7. DATABASE MODELS
+================================================================================
+
+  Users          — System users with roles (admin, doctor, nurse, etc.)
+  Patients       — Full patient records with medical history & risk factors
+  VitalSigns     — Individual vital sign readings (time-series)
+  Predictions    — AI risk prediction results with SHAP explanations
+  Alerts         — Clinical alerts (threshold, AI, emergency)
+  Medications    — Medication tracking and administration logs
+  Symptoms       — Patient symptom records
+  HourlyLogs     — Aggregated hourly vital sign summaries
+  Appointments   — Appointment scheduling
+  Notifications  — System notification records
+
+
+================================================================================
+  8. SETUP & INSTALLATION
+================================================================================
+
+  8.1 Prerequisites:
+    - Python 3.10+
+    - Node.js 18+ and npm
+    - (Optional) Arduino IDE for ESP32 firmware
+    - (Optional) Docker + Docker Compose for containerized deployment
+
+  8.2 Backend Setup:
+    cd backend
+    pip install -r requirements.txt
+    python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  8.3 Frontend Setup:
+    cd frontend
+    npm install
+    npm run dev
+    # Opens at http://localhost:5173
+
+  8.4 ML Model Training:
+    python ml/train_models.py
+    # Trains all models, saves best to ml/models/
+
+  8.5 Docker Deployment:
+    docker-compose up --build
+    # Backend: localhost:8000
+    # Frontend: localhost:3000
+    # Proxy: localhost:80
+
+  8.6 Environment Configuration:
+    cp .env.example .env
+    # Edit .env with your settings (database, JWT secret, SMTP, etc.)
+
+  8.7 Demo Credentials:
+    Admin:   admin / cardio123
+    Doctor:  dr.sharma / cardio123
+    Nurse:   nurse.anitha / cardio123
+
+
+================================================================================
+  9. PORTS & SERVICES
+================================================================================
+
+    Service               Port      Description
+    ─────────────────────────────────────────────────────
+    Backend (FastAPI)      8000      REST API + WebSocket
+    Frontend (Vite Dev)    5173      React dev server
+    Frontend (Nginx)       3000      Production build (Docker)
+    Nginx Proxy            80        Reverse proxy (Docker)
+    PostgreSQL             5432      Database (Docker)
+    MQTT Broker            1883      IoT messaging (optional)
+
+
+================================================================================
+  10. KEY DESIGN DECISIONS
+================================================================================
+
+  - Modular Architecture: Clean separation of concerns with routers, services,
+    models, and schemas layers following FastAPI best practices.
+
+  - Dual ML Inference: The system supports both server-side sklearn model
+    inference and client-side prediction using exported logistic regression
+    weights (JSON), enabling offline functionality.
+
+  - IoT-First Design: The ESP32 firmware sends vitals via HTTP POST every 3
+    seconds, with automatic server-side alert generation on each reading.
+
+  - Role-Based Security: Fine-grained RBAC ensures doctors, nurses, and admins
+    each see only what they need. JWT tokens with 8-hour expiry balance
+    security and usability during long hospital shifts.
+
+  - Real-Time Monitoring: The live monitoring page auto-refreshes every 5
+    seconds, providing near real-time visibility into patient vitals.
+
+  - Configurable Alerts: All clinical thresholds are configurable via
+    environment variables, allowing hospitals to customize alert sensitivity.
+
+  - Docker-Ready: Full Docker Compose setup with PostgreSQL, Nginx reverse
+    proxy, and health checks for production deployment.
+
+  - Offline Dashboard: The CardioTrack standalone dashboard works without
+    any backend, using exported model weights for client-side predictions.
+
+
+================================================================================
+  11. DATASET
+================================================================================
+
+  The ML models are trained on the UCI Heart Disease Dataset:
+    - 303 patient records
+    - 13 clinical features + 1 target (heart disease presence)
+    - Features: age, sex, chest pain type, resting BP, cholesterol,
+      fasting blood sugar, resting ECG, max heart rate, exercise angina,
+      ST depression, ST slope, major vessels, thalassemia
+    - Binary classification: 0 (low risk) vs 1 (elevated risk)
+    - Source: https://archive.ics.uci.edu/ml/datasets/heart+disease
+
+
+================================================================================
+  12. LICENSE & DISCLAIMER
+================================================================================
+
+  ⚕️ MEDICAL DISCLAIMER:
+  This is an AI-assisted clinical decision support tool. It does NOT diagnose
+  medical conditions or replace professional medical judgment. All AI predictions
+  and risk assessments must be reviewed and validated by licensed healthcare
+  professionals. Do NOT make treatment decisions based solely on this system's
+  outputs.
+
+================================================================================
+                           END OF PROJECT DESCRIPTION
+================================================================================
