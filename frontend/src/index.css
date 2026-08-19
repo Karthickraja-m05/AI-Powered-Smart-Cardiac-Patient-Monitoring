@@ -2,181 +2,407 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Global Styles ─── */
+/* ═════════════════════════════════════════════════════════════════════════
+   THEME VARIABLES & MORPHING ENGINE
+   ═════════════════════════════════════════════════════════════════════════ */
+:root {
+  --transition-theme: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', 'Inter', sans-serif;
+  
+  /* Neumorphic Dark (Default) Variables */
+  --bg-body: #0c0e12;
+  --bg-surface: #12151b;
+  --bg-surface-elevated: #161922;
+  --bg-surface-sunken: #090a0d;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-specular: rgba(255, 255, 255, 0.08);
+  
+  /* Neumorphic Dual Shadows */
+  --shadow-neumorph-raised: 8px 8px 20px rgba(0, 0, 0, 0.65), -6px -6px 16px rgba(255, 255, 255, 0.028);
+  --shadow-neumorph-card: 6px 6px 16px rgba(0, 0, 0, 0.55), -4px -4px 12px rgba(255, 255, 255, 0.025);
+  --shadow-neumorph-btn: 4px 4px 12px rgba(0, 0, 0, 0.5), -3px -3px 8px rgba(255, 255, 255, 0.035);
+  --shadow-neumorph-inset: inset 3px 3px 7px rgba(0, 0, 0, 0.65), inset -2px -2px 5px rgba(255, 255, 255, 0.03);
+  --shadow-glow-purple: 0 0 25px rgba(139, 92, 246, 0.15);
+  --shadow-glow-cyan: 0 0 25px rgba(6, 182, 212, 0.15);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LIGHT THEME – APPLE VISIONOS GLASSMORPHISM
+   ═════════════════════════════════════════════════════════════════════════ */
+html.light,
+html[data-theme='light'] {
+  --bg-body: #f0f4f9;
+  --bg-surface: rgba(255, 255, 255, 0.72);
+  --bg-surface-elevated: rgba(255, 255, 255, 0.85);
+  --bg-surface-sunken: rgba(230, 238, 248, 0.6);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --border-subtle: rgba(255, 255, 255, 0.8);
+  --border-specular: rgba(255, 255, 255, 0.95);
+  
+  /* Glassmorphism Diffuse Shadows */
+  --shadow-neumorph-raised: 0 16px 40px -10px rgba(31, 38, 135, 0.09), 0 0 0 1px rgba(255, 255, 255, 0.9);
+  --shadow-neumorph-card: 0 10px 30px -5px rgba(31, 38, 135, 0.07), 0 0 0 1px rgba(255, 255, 255, 0.85);
+  --shadow-neumorph-btn: 0 6px 16px -2px rgba(31, 38, 135, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.9);
+  --shadow-neumorph-inset: inset 0 2px 4px rgba(31, 38, 135, 0.04), 0 0 0 1px rgba(226, 232, 240, 0.8);
+  --shadow-glow-purple: 0 10px 25px rgba(139, 92, 246, 0.12);
+  --shadow-glow-cyan: 0 10px 25px rgba(6, 182, 212, 0.12);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   GLOBAL BASE & MORPHING SMOOTH TRANSITIONS
+   ═════════════════════════════════════════════════════════════════════════ */
 @layer base {
-  :root {
-    --brand-glow: rgba(6, 182, 212, 0.15);
-    --surface-glass: rgba(17, 24, 39, 0.7);
-    --border-subtle: rgba(148, 163, 184, 0.1);
+  html {
+    color-scheme: dark;
+    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html.light {
+    color-scheme: light;
   }
 
   body {
-    @apply bg-surface-900 text-slate-100 font-sans;
-    background-image:
-      radial-gradient(ellipse at 20% 50%, rgba(6, 182, 212, 0.04) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
-      radial-gradient(ellipse at 50% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
-    background-attachment: fixed;
+    background-color: var(--bg-body);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    transition: var(--transition-theme);
+    position: relative;
+    overflow-x: hidden;
   }
 
+  /* Smooth Morphing for all container & interaction elements */
+  div, aside, main, nav, section, article, header, button, input, select, textarea, span, p, h1, h2, h3, h4 {
+    transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                backdrop-filter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Custom Scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.15) transparent;
+    scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
   }
   *::-webkit-scrollbar { width: 6px; height: 6px; }
   *::-webkit-scrollbar-track { background: transparent; }
   *::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.15);
+    background: rgba(148, 163, 184, 0.2);
     border-radius: 3px;
   }
-  *::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.3); }
+  *::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.4); }
 }
 
-/* ─── Component Layer ─── */
-@layer components {
-  .glass-card {
-    @apply bg-surface-800/70 backdrop-blur-xl border border-white/5
-           rounded-2xl shadow-xl shadow-black/10;
-  }
-
-  .glass-card-hover {
-    @apply glass-card transition-all duration-300
-           hover:border-brand-500/20 hover:shadow-brand-500/5;
-  }
-
-  .stat-card {
-    @apply glass-card p-5 relative overflow-hidden;
-  }
-
-  .stat-card::before {
-    content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-500;
-    background: radial-gradient(circle at 50% 0%, var(--brand-glow), transparent 70%);
-  }
-  .stat-card:hover::before {
-    @apply opacity-100;
-  }
-
-  .vital-badge {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-           text-xs font-semibold tracking-wide;
-  }
-
-  .vital-badge-green {
-    @apply vital-badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/20;
-  }
-  .vital-badge-yellow {
-    @apply vital-badge bg-amber-500/15 text-amber-400 border border-amber-500/20;
-  }
-  .vital-badge-red {
-    @apply vital-badge bg-red-500/15 text-red-400 border border-red-500/20;
-  }
-  .vital-badge-blue {
-    @apply vital-badge bg-blue-500/15 text-blue-400 border border-blue-500/20;
-  }
-
-  .nav-item {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium
-           text-slate-400 transition-all duration-200 cursor-pointer
-           hover:text-slate-100 hover:bg-white/5;
-  }
-  .nav-item.active {
-    @apply text-brand-400 bg-brand-500/10 border border-brand-500/20;
-  }
-
-  .input-field {
-    @apply w-full px-4 py-2.5 bg-surface-900/50 border border-white/10
-           rounded-xl text-sm text-slate-100 placeholder-slate-500
-           focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/40
-           transition-all duration-200;
-  }
-
-  .btn-primary {
-    @apply px-5 py-2.5 bg-gradient-to-r from-brand-500 to-brand-600
-           text-white font-semibold text-sm rounded-xl
-           shadow-lg shadow-brand-500/25
-           hover:shadow-brand-500/40 hover:from-brand-400 hover:to-brand-500
-           active:scale-[0.98] transition-all duration-200;
-  }
-
-  .btn-secondary {
-    @apply px-5 py-2.5 bg-white/5 border border-white/10
-           text-slate-300 font-medium text-sm rounded-xl
-           hover:bg-white/10 hover:text-white
-           active:scale-[0.98] transition-all duration-200;
-  }
-
-  .btn-danger {
-    @apply px-5 py-2.5 bg-red-500/15 border border-red-500/20
-           text-red-400 font-medium text-sm rounded-xl
-           hover:bg-red-500/25 hover:text-red-300
-           active:scale-[0.98] transition-all duration-200;
-  }
-
-  .btn-icon {
-    @apply p-2 rounded-xl text-slate-400 hover:text-slate-100
-           hover:bg-white/5 transition-all duration-200;
-  }
-
-  .table-header {
-    @apply text-xs font-semibold text-slate-400 uppercase tracking-wider;
-  }
-
-  .table-row {
-    @apply border-t border-white/5 hover:bg-white/[0.02] transition-colors;
-  }
-
-  .table-cell {
-    @apply px-4 py-3 text-sm text-slate-300;
-  }
-
-  .sidebar-gradient {
-    background: linear-gradient(180deg,
-      rgba(6, 182, 212, 0.05) 0%,
-      rgba(17, 24, 39, 0.95) 30%,
-      rgba(10, 15, 30, 1) 100%
-    );
-  }
-
-  .page-header {
-    @apply flex items-center justify-between mb-8;
-  }
-
-  .section-title {
-    @apply text-lg font-semibold text-slate-100 mb-4;
-  }
-
-  .disclaimer-bar {
-    @apply bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2
-           text-xs text-amber-400/80 flex items-center gap-2;
-  }
-
-  /* ECG Line Animation */
-  .ecg-line {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 1000;
-    animation: ecg-draw 2s linear infinite;
-  }
-
-  @keyframes ecg-draw {
-    to { stroke-dashoffset: 0; }
-  }
+/* ═════════════════════════════════════════════════════════════════════════
+   AMBIENT BACKGROUND EFFECTS
+   ═════════════════════════════════════════════════════════════════════════ */
+.ambient-bg-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
 }
 
-/* ─── Role-Based Theme Overrides ─── */
-.theme-patient body,
-.theme-patient {
-  background: #f8fafc !important;
-  background-image: none !important;
+/* Dark Theme Ambient Radial Mesh & Glowing Particles */
+.dark .ambient-glow-1 {
+  position: absolute;
+  top: 5%;
+  left: 15%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, rgba(6, 182, 212, 0.02) 45%, transparent 70%);
+  filter: blur(60px);
+  animation: float-ambient 18s ease-in-out infinite alternate;
+}
+
+.dark .ambient-glow-2 {
+  position: absolute;
+  bottom: 10%;
+  right: 15%;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.04) 0%, rgba(16, 185, 129, 0.02) 50%, transparent 70%);
+  filter: blur(80px);
+  animation: float-ambient 22s ease-in-out infinite alternate-reverse;
+}
+
+/* Light Theme Apple VisionOS Glass Blobs */
+.light .ambient-glow-1 {
+  position: absolute;
+  top: -5%;
+  left: 10%;
+  width: 650px;
+  height: 650px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(168, 85, 247, 0.08) 50%, transparent 75%);
+  filter: blur(70px);
+  animation: float-ambient 16s ease-in-out infinite alternate;
+}
+
+.light .ambient-glow-2 {
+  position: absolute;
+  bottom: -5%;
+  right: 10%;
+  width: 750px;
+  height: 750px;
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.08) 0%, rgba(56, 189, 248, 0.1) 45%, transparent 70%);
+  filter: blur(80px);
+  animation: float-ambient 20s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes float-ambient {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -20px) scale(1.05); }
+  100% { transform: translate(-20px, 30px) scale(0.95); }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   3D MICRO-ENHANCEMENTS & TACTILE DEPTH
+   ═════════════════════════════════════════════════════════════════════════ */
+.floating-icon {
+  animation: float-micro 3s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes float-micro {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   DARK THEME: NEUMORPHISM ADAPTIVE RULES
+   ═════════════════════════════════════════════════════════════════════════ */
+.dark .glass-card,
+.dark .bg-surface-800,
+.dark .bg-surface-850,
+.dark .bg-surface-900\/50,
+.dark .bg-surface-800\/50,
+.dark .bg-surface-800\/60,
+.dark .bg-surface-800\/70,
+.dark .bg-surface-800\/80,
+.dark .bg-surface-800\/90 {
+  background: #13161c !important;
+  box-shadow: var(--shadow-neumorph-card) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 1.25rem !important;
+}
+
+.dark .glass-card-hover:hover,
+.dark .hover\:border-white\/10:hover,
+.dark .hover\:border-blue-500\/30:hover,
+.dark .hover\:border-cyan-500\/20:hover {
+  transform: translateY(-2px) scale(1.003) !important;
+  box-shadow: 10px 10px 24px rgba(0, 0, 0, 0.7), -6px -6px 18px rgba(255, 255, 255, 0.035), var(--shadow-glow-purple) !important;
+}
+
+/* Dark Neumorphic Inset Input Fields */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="number"],
+.dark input[type="date"],
+.dark textarea,
+.dark select,
+.dark .input-field {
+  background: #0b0d11 !important;
+  box-shadow: var(--shadow-neumorph-inset) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  color: #f1f5f9 !important;
+  border-radius: 0.875rem !important;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  box-shadow: var(--shadow-neumorph-inset), 0 0 12px rgba(139, 92, 246, 0.25) !important;
+}
+
+/* Dark Embossed Buttons */
+.dark .btn-primary,
+.dark button.bg-gradient-to-r {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 20px rgba(139, 92, 246, 0.25) !important;
+}
+.dark .btn-primary:active,
+.dark button.bg-gradient-to-r:active {
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.6) !important;
+  transform: scale(0.98) !important;
+}
+
+.dark .btn-secondary,
+.dark button.bg-white\/5,
+.dark button.bg-white\/10 {
+  background: #15181f !important;
+  box-shadow: var(--shadow-neumorph-btn) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.dark .btn-secondary:active,
+.dark button.bg-white\/5:active {
+  box-shadow: var(--shadow-neumorph-inset) !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LIGHT THEME: GLASSMORPHISM & APPLE VISIONOS ADAPTIVE RULES
+   ═════════════════════════════════════════════════════════════════════════ */
+.light body {
+  background: #eef2f7 !important;
+  background-image: 
+    radial-gradient(ellipse at 15% 10%, rgba(56, 189, 248, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse at 85% 90%, rgba(168, 85, 247, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 50%, rgba(244, 247, 251, 0.8) 0%, #edf2f7 100%) !important;
+  background-attachment: fixed !important;
+  color: #0f172a !important;
+}
+
+/* Light Mode Glass Cards & Surfaces */
+.light .glass-card,
+.light .bg-surface-800,
+.light .bg-surface-850,
+.light .bg-surface-900,
+.light .bg-surface-950,
+.light .bg-surface-900\/50,
+.light .bg-surface-800\/40,
+.light .bg-surface-800\/50,
+.light .bg-surface-800\/60,
+.light .bg-surface-800\/70,
+.light .bg-surface-800\/80,
+.light .bg-surface-800\/90,
+.light .bg-surface-900\/80,
+.light .bg-surface-900\/90 {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  box-shadow: 0 10px 30px -5px rgba(31, 38, 135, 0.07), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.98) !important;
+  border-radius: 1.25rem !important;
+}
+
+.light .glass-card-hover:hover,
+.light .hover\:border-white\/10:hover,
+.light .hover\:border-blue-500\/30:hover,
+.light .hover\:border-cyan-500\/20:hover {
+  background: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 16px 36px -8px rgba(31, 38, 135, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.95) !important;
+  transform: translateY(-2px) scale(1.003) !important;
+}
+
+/* Light Mode Typography Adjustments */
+.light h1.text-white,
+.light h2.text-white,
+.light h3.text-white,
+.light h4.text-white,
+.light p.text-white,
+.light span.text-white,
+.light .text-slate-100,
+.light .text-slate-200 {
+  color: #0f172a !important;
+}
+
+.light .text-slate-300,
+.light .text-slate-400 {
+  color: #334155 !important;
+}
+
+.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Light Mode Inputs & Form Elements */
+.light input[type="text"],
+.light input[type="email"],
+.light input[type="password"],
+.light input[type="number"],
+.light input[type="date"],
+.light textarea,
+.light select,
+.light .input-field {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(203, 213, 225, 0.8) !important;
+  color: #0f172a !important;
+  box-shadow: inset 0 2px 4px rgba(31, 38, 135, 0.03), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  border-radius: 0.875rem !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  background: #ffffff !important;
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2) !important;
+}
+
+/* Light Mode Buttons */
+.light .btn-secondary,
+.light button.bg-white\/5,
+.light button.bg-white\/10 {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
   color: #1e293b !important;
+  box-shadow: 0 4px 12px rgba(31, 38, 135, 0.06) !important;
 }
 
-.theme-patient .glass-card {
-  @apply bg-white/90 border-slate-200 shadow-sm;
+.light .btn-secondary:hover,
+.light button.bg-white\/5:hover,
+.light button.bg-white\/10:hover {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 6px 16px rgba(31, 38, 135, 0.1) !important;
 }
 
-.theme-patient .stat-card {
-  @apply bg-white border border-slate-200;
+/* Light Mode Sidebar Glassmorphism */
+.light aside {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 4px 0 24px rgba(31, 38, 135, 0.04) !important;
+}
+
+.light aside .nav-item:not(.active),
+.light aside a.text-slate-400 {
+  color: #475569 !important;
+}
+
+.light aside .nav-item:not(.active):hover,
+.light aside a.text-slate-400:hover {
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: #0f172a !important;
+}
+
+/* Light Mode Inner Chips & Rows */
+.light .bg-white\/\[0\.02\],
+.light .bg-white\/\[0\.03\],
+.light .bg-white\/\[0\.04\],
+.light .bg-white\/\[0\.05\],
+.light .bg-black\/20,
+.light .bg-surface-900\/80 {
+  background: rgba(241, 245, 249, 0.75) !important;
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+.light .border-white\/5,
+.light .border-white\/10,
+.light .border-white\/\[0\.03\],
+.light .border-white\/\[0\.04\],
+.light .border-white\/\[0\.05\],
+.light .border-white\/\[0\.06\],
+.light .border-white\/\[0\.08\] {
+  border-color: rgba(226, 232, 240, 0.75) !important;
 }
 
 /* Pulse animation for live status dots */

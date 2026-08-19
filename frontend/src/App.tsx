@@ -24,12 +24,25 @@ import PatientPortalDashboard from './pages/patient/PatientPortalDashboard.tsx';
 import ReceptionistDashboard from './pages/receptionist/ReceptionistDashboard.tsx';
 import CaregiverDashboard from './pages/caregiver/CaregiverDashboard.tsx';
 
+// ── Doctor Portal Sub-Pages ──
+import DoctorAvailabilityPage from './pages/doctor/DoctorAvailabilityPage.tsx';
+import DoctorShiftsPage from './pages/doctor/DoctorShiftsPage.tsx';
+
 // ── Feature Components (used as pages) ──
 import DoctorSearchComponent from './components/features/DoctorSearch.tsx';
 import AuditLogViewer from './components/features/AuditLogViewer.tsx';
 import ICUPriorityBoard from './components/features/ICUPriorityBoard.tsx';
 import VisitorManagement from './components/features/VisitorManagement.tsx';
 import AppointmentsPage from './pages/AppointmentsPage.tsx';
+
+import RegisterPatientPage from './pages/receptionist/RegisterPatientPage.tsx';
+
+// ── Super Admin Sub-Pages ──
+import HospitalsPage from './pages/superadmin/HospitalsPage.tsx';
+import DepartmentsPage from './pages/superadmin/DepartmentsPage.tsx';
+import ManageUsersPage from './pages/superadmin/ManageUsersPage.tsx';
+import ShiftManagementPage from './pages/superadmin/ShiftManagementPage.tsx';
+import CarbonReportsPage from './pages/superadmin/CarbonReportsPage.tsx';
 
 // Map each role to its home dashboard
 const roleDashboards: Record<UserRole, React.ComponentType> = {
@@ -53,6 +66,14 @@ function RoleDashboardPage() {
   const role = (user?.role || 'patient') as UserRole;
   const DashComp = roleDashboards[role] || AdminDashboard;
   return <DashComp />;
+}
+
+/** Returns the shift component for current user role (doctor gets personal schedule, admin gets fleet management) */
+function RoleShiftsPage() {
+  const user = useAuthStore((s) => s.user);
+  const role = (user?.role || 'patient') as UserRole;
+  if (role === 'doctor') return <DoctorShiftsPage />;
+  return <ShiftManagementPage />;
 }
 
 export default function App() {
@@ -95,9 +116,16 @@ export default function App() {
                   <Route path="/audit" element={<AuditLogViewer />} />
                   <Route path="/icu-priority" element={<ICUPriorityBoard />} />
 
+                  {/* Super Admin sub-pages */}
+                  <Route path="/hospitals" element={<HospitalsPage />} />
+                  <Route path="/departments" element={<DepartmentsPage />} />
+                  <Route path="/users" element={<ManageUsersPage />} />
+                  <Route path="/shifts" element={<RoleShiftsPage />} />
+                  <Route path="/carbon" element={<CarbonReportsPage />} />
+
                   {/* Role-specific shortcuts */}
-                  <Route path="/register" element={<PatientList />} />
-                  <Route path="/availability" element={<DoctorDashboard />} />
+                  <Route path="/register" element={<RegisterPatientPage />} />
+                  <Route path="/availability" element={<DoctorAvailabilityPage />} />
 
                   {/* Legacy admin dashboard (accessible by admins) */}
                   <Route path="/admin-dashboard" element={<AdminDashboard />} />
