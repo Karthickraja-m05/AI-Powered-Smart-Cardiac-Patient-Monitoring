@@ -6,6 +6,7 @@ Tracks 20+ cardiac-related symptoms recorded by doctors and nurses.
 """
 
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from sqlalchemy import (
     Column, Integer, Float, Boolean, String, DateTime, Text, ForeignKey
 )

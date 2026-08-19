@@ -162,3 +162,28 @@
     to { stroke-dashoffset: 0; }
   }
 }
+
+/* ─── Role-Based Theme Overrides ─── */
+.theme-patient body,
+.theme-patient {
+  background: #f8fafc !important;
+  background-image: none !important;
+  color: #1e293b !important;
+}
+
+.theme-patient .glass-card {
+  @apply bg-white/90 border-slate-200 shadow-sm;
+}
+
+.theme-patient .stat-card {
+  @apply bg-white border border-slate-200;
+}
+
+/* Pulse animation for live status dots */
+@keyframes gentle-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+.animate-gentle-pulse {
+  animation: gentle-pulse 2s ease-in-out infinite;
+}

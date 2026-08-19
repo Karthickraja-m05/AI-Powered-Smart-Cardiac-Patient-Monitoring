@@ -1,6 +1,6 @@
 /*
  * ═══════════════════════════════════════════════════════════════
- * CardioSense AI — ESP32 Vital Signs Monitor Firmware
+ * CareBridge AI — ESP32 Vital Signs Monitor Firmware
  * ═══════════════════════════════════════════════════════════════
  *
  * Hardware:
@@ -10,7 +10,7 @@
  *   - DS18B20 Temperature Sensor — OneWire
  *   - Blood Pressure Sensor (analog)
  *
- * Sends data to CardioSense AI backend via HTTP POST every 3 seconds.
+ * Sends data to CareBridge AI backend via HTTP POST every 3 seconds.
  *
  * Dependencies (install via Arduino Library Manager):
  *   - WiFi (built-in)
@@ -33,7 +33,7 @@
 const char* WIFI_SSID     = "YourWiFiSSID";
 const char* WIFI_PASSWORD  = "YourWiFiPassword";
 
-// CardioSense AI Backend
+// CareBridge AI Backend
 const char* API_URL       = "http://192.168.1.100:8000/api/vitals/iot";
 const char* DEVICE_ID     = "ESP32-WARD-C101";
 const int   PATIENT_ID    = 1;
@@ -64,7 +64,7 @@ int ecgIndex = 0;
 void setup() {
   Serial.begin(115200);
   Serial.println("\n═══════════════════════════════════════");
-  Serial.println("  CardioSense AI — ESP32 Monitor");
+  Serial.println("  CareBridge AI — ESP32 Monitor");
   Serial.println("═══════════════════════════════════════\n");
 
   // Pin modes

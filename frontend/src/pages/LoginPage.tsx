@@ -113,38 +113,98 @@ export default function LoginPage() {
 
           {/* Demo credentials */}
           <div className="mt-6 p-4 bg-brand-500/5 border border-brand-500/10 rounded-xl">
-            <p className="text-xs font-semibold text-brand-400 mb-2">Demo Credentials</p>
-            <div className="grid grid-cols-2 gap-2 text-xs text-slate-400">
-              <div>
-                <span className="text-slate-500">Admin:</span>{' '}
-                <button
-                  className="text-brand-400 hover:underline"
-                  onClick={() => { setUsername('admin'); setPassword('cardio123'); }}
-                >
-                  admin
-                </button>
+            <p className="text-xs font-semibold text-brand-400 mb-2">Demo Credentials (Click to fill)</p>
+            <div className="space-y-1.5 text-xs text-slate-400">
+              <div className="flex justify-between items-center">
+                <span>
+                  <span className="text-slate-500">Super Admin:</span>{' '}
+                  <button
+                    type="button"
+                    className="text-brand-400 font-medium hover:underline"
+                    onClick={() => { setUsername('admin'); setPassword('admin123'); }}
+                  >
+                    admin
+                  </button>
+                </span>
+                <span className="text-slate-500 font-mono">admin123</span>
               </div>
-              <div>
-                <span className="text-slate-500">Doctor:</span>{' '}
-                <button
-                  className="text-brand-400 hover:underline"
-                  onClick={() => { setUsername('dr.sharma'); setPassword('cardio123'); }}
-                >
-                  dr.sharma
-                </button>
+              <div className="flex justify-between items-center">
+                <span>
+                  <span className="text-slate-500">Hospital Admin:</span>{' '}
+                  <button
+                    type="button"
+                    className="text-brand-400 font-medium hover:underline"
+                    onClick={() => { setUsername('hospital.admin'); setPassword('hadmin123'); }}
+                  >
+                    hospital.admin
+                  </button>
+                </span>
+                <span className="text-slate-500 font-mono">hadmin123</span>
               </div>
-              <div>
-                <span className="text-slate-500">Nurse:</span>{' '}
-                <button
-                  className="text-brand-400 hover:underline"
-                  onClick={() => { setUsername('nurse.anitha'); setPassword('cardio123'); }}
-                >
-                  nurse.anitha
-                </button>
+              <div className="flex justify-between items-center">
+                <span>
+                  <span className="text-slate-500">Doctor:</span>{' '}
+                  <button
+                    type="button"
+                    className="text-brand-400 font-medium hover:underline"
+                    onClick={() => { setUsername('dr.sharma'); setPassword('sharma123'); }}
+                  >
+                    dr.sharma
+                  </button>
+                </span>
+                <span className="text-slate-500 font-mono">sharma123</span>
               </div>
-              <div>
-                <span className="text-slate-500">Password:</span>{' '}
-                <span className="text-slate-300 font-mono">cardio123</span>
+              <div className="flex justify-between items-center">
+                <span>
+                  <span className="text-slate-500">Nurse:</span>{' '}
+                  <button
+                    type="button"
+                    className="text-brand-400 font-medium hover:underline"
+                    onClick={() => { setUsername('nurse.anitha'); setPassword('anitha123'); }}
+                  >
+                    nurse.anitha
+                  </button>
+                </span>
+                <span className="text-slate-500 font-mono">anitha123</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>
+                  <span className="text-slate-500">Receptionist:</span>{' '}
+                  <button
+                    type="button"
+                    className="text-brand-400 font-medium hover:underline"
+                    onClick={() => { setUsername('reception'); setPassword('reception123'); }}
+                  >
+                    reception
+                  </button>
+                </span>
+                <span className="text-slate-500 font-mono">reception123</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>
+                  <span className="text-slate-500">Patient:</span>{' '}
+                  <button
+                    type="button"
+                    className="text-brand-400 font-medium hover:underline"
+                    onClick={() => { setUsername('patient.ramesh'); setPassword('patient123'); }}
+                  >
+                    patient.ramesh
+                  </button>
+                </span>
+                <span className="text-slate-500 font-mono">patient123</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>
+                  <span className="text-slate-500">Caregiver:</span>{' '}
+                  <button
+                    type="button"
+                    className="text-brand-400 font-medium hover:underline"
+                    onClick={() => { setUsername('caregiver.sunita'); setPassword('sunita123'); }}
+                  >
+                    caregiver.sunita
+                  </button>
+                </span>
+                <span className="text-slate-500 font-mono">sunita123</span>
               </div>
             </div>
           </div>

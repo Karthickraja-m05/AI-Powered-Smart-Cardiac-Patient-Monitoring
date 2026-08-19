@@ -71,12 +71,15 @@ class Patient(Base):
     insurance_expiry = Column(Date, nullable=True)
 
     # ── Hospital Assignment ──
+    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     status = Column(Enum(PatientStatus), default=PatientStatus.ADMITTED)
     ward = Column(String(50), nullable=True)
     room_number = Column(String(20), nullable=True)
     bed_number = Column(String(20), nullable=True)
     assigned_doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     assigned_nurse_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    assigned_caregiver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # ── Admission ──
     admission_date = Column(DateTime, nullable=True)
@@ -111,6 +114,10 @@ class Patient(Base):
     # ── AI Risk ──
     current_risk_level = Column(String(20), nullable=True)  # low, medium, high, critical
     current_risk_score = Column(Float, nullable=True)
+
+    # ── ICU Priority ──
+    icu_priority_score = Column(Float, nullable=True)
+    icu_priority_level = Column(String(20), nullable=True)  # critical, urgent, stable, waiting
 
     # ── Linked User Account ──
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)

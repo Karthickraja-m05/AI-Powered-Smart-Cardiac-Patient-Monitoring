@@ -7,6 +7,7 @@ Stores ML cardiovascular risk predictions with SHAP explanations.
 
 import enum
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from sqlalchemy import (
     Column, Integer, Float, String, DateTime, Enum, JSON, ForeignKey
 )

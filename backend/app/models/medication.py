@@ -7,6 +7,7 @@ Tracks medications, doses, injections, IV fluids, and administration records.
 
 import enum
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, DateTime, Enum, Text, ForeignKey
 )

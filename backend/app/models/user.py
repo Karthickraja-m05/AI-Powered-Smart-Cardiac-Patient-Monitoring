@@ -3,13 +3,13 @@
 User Model
 ==========
 Stores all system users with role-based access control.
-Roles: SUPER_ADMIN, HOSPITAL_ADMIN, DOCTOR, NURSE, RECEPTIONIST, PATIENT
+Roles: SUPER_ADMIN, HOSPITAL_ADMIN, DOCTOR, NURSE, RECEPTIONIST, PATIENT, CAREGIVER
 """
 
 import enum
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Boolean, DateTime, Enum, Text
+    Column, Integer, String, Float, Boolean, DateTime, Enum, Text, ForeignKey
 )
 from ..database import Base
 
@@ -21,6 +21,7 @@ class UserRole(str, enum.Enum):
     NURSE = "nurse"
     RECEPTIONIST = "receptionist"
     PATIENT = "patient"
+    CAREGIVER = "caregiver"
 
 
 class User(Base):
@@ -39,6 +40,20 @@ class User(Base):
     specialization = Column(String(255), nullable=True)  # For doctors
     department = Column(String(255), nullable=True)
     license_number = Column(String(100), nullable=True)  # For doctors/nurses
+
+    # Hospital Assignment
+    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)
+
+    # Doctor-specific fields
+    experience_years = Column(Integer, nullable=True)
+    rating_avg = Column(Float, nullable=True)
+    rating_count = Column(Integer, default=0)
+    current_workload = Column(Integer, default=0)  # number of active patients
+    consultation_time_avg = Column(Integer, default=15)  # avg minutes per consultation
+
+    # Caregiver-specific fields
+    linked_patient_id = Column(Integer, ForeignKey("patients.id", use_alter=True), nullable=True)
+    caregiver_relation = Column(String(100), nullable=True)  # spouse, parent, child, etc.
 
     # Status
     is_active = Column(Boolean, default=True)

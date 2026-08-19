@@ -7,8 +7,11 @@ Full CRUD with search, filtering, pagination, and file uploads.
 
 from datetime import datetime
 from typing import Optional
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
+# pyrefly: ignore [missing-import]
 from sqlalchemy import or_
 
 from ..database import get_db
@@ -18,6 +21,7 @@ from ..schemas.patient_schema import (
     PatientCreate, PatientUpdate, PatientResponse, PatientListResponse,
 )
 from ..services.auth_service import get_current_user
+from ..services.load_balancer_service import DoctorLoadBalancer
 
 router = APIRouter(prefix="/api/patients", tags=["Patients"])
 
@@ -51,6 +55,25 @@ def create_patient(
     db.add(patient)
     db.commit()
     db.refresh(patient)
+
+    # ── Auto-assign doctor via Load Balancer if none specified ──
+    if not patient.assigned_doctor_id and patient.hospital_id:
+        try:
+            lb = DoctorLoadBalancer(db)
+            lb.assign_doctor(
+                patient_id=patient.id,
+                hospital_id=patient.hospital_id,
+                urgency_level=(
+                    "emergency" if patient.status == PatientStatus.EMERGENCY
+                    else "critical" if patient.status == PatientStatus.ICU
+                    else "normal"
+                ),
+            )
+            db.refresh(patient)
+        except (ValueError, Exception):
+            # Auto-assign is best-effort; don't fail patient creation
+            pass
+
     return PatientResponse.model_validate(patient)
 
 

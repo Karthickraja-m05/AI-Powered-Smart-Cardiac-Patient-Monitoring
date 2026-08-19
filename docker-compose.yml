@@ -1,5 +1,4 @@
-# ═══════════════════════════════════════════════════════════════
-# CardioSense AI — Docker Compose
+# ── Docker Compose for CareBridge AI ──
 # AI-Powered Smart Cardiac Patient Monitoring Platform
 # ═══════════════════════════════════════════════════════════════
 
@@ -11,11 +10,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cardiosense-backend
+    container_name: carebridge-backend
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://cardio:cardio_secret@postgres:5432/cardiosense
+      - DATABASE_URL=postgresql://cardio:cardio_secret@postgres:5432/carebridge
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-change-me}
       - DEBUG=false
     depends_on:
@@ -31,7 +30,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: cardiosense-frontend
+    container_name: carebridge-frontend
     ports:
       - "3000:80"
     depends_on:
@@ -41,9 +40,9 @@ services:
   # ── PostgreSQL ──
   postgres:
     image: postgres:16-alpine
-    container_name: cardiosense-db
+    container_name: carebridge-db
     environment:
-      POSTGRES_DB: cardiosense
+      POSTGRES_DB: carebridge
       POSTGRES_USER: cardio
       POSTGRES_PASSWORD: cardio_secret
     ports:
@@ -51,7 +50,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cardio -d cardiosense"]
+      test: ["CMD-SHELL", "pg_isready -U cardio -d carebridge"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,7 +59,7 @@ services:
   # ── Nginx Reverse Proxy ──
   nginx:
     image: nginx:alpine
-    container_name: cardiosense-proxy
+    container_name: carebridge-proxy
     ports:
       - "80:80"
     volumes:

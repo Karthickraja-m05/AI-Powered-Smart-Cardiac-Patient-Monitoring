@@ -7,6 +7,7 @@ Monitors vital signs against clinical thresholds and triggers emergency alerts.
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from ..config import settings

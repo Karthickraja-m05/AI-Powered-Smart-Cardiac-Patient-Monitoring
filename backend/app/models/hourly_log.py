@@ -7,6 +7,7 @@ symptoms, medications, and AI predictions.
 """
 
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from sqlalchemy import (
     Column, Integer, Float, String, DateTime, Text, ForeignKey, JSON
 )

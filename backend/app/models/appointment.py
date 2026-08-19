@@ -7,6 +7,7 @@ Patient-doctor appointment scheduling.
 
 import enum
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from sqlalchemy import (
     Column, Integer, String, DateTime, Enum, Text, ForeignKey
 )

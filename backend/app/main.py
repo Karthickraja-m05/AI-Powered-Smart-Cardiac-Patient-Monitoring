@@ -21,7 +21,11 @@ import os
 
 from .config import settings
 from .database import init_db
-from .routers import auth, patients, vitals, predictions, symptoms, medications, dashboard
+from .routers import (
+    auth, patients, vitals, predictions, symptoms, medications, dashboard,
+    hospitals, doctor_availability, shifts, transfers, chat, visitors,
+    ratings, audit, documents, timeline, role_dashboards, load_balancer,
+)
 
 
 @asynccontextmanager
@@ -30,7 +34,7 @@ async def lifespan(app: FastAPI):
     # ── Startup ──
     print("=" * 60)
     print(f"  {settings.APP_NAME} v{settings.APP_VERSION}")
-    print("  AI-Powered Cardiac Patient Monitoring Platform")
+    print("  Hospital Intelligence Platform")
     print("=" * 60)
     print()
 
@@ -60,7 +64,8 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description=(
-        "AI-Powered Smart Cardiac Patient Monitoring & Clinical Decision Support System.\n\n"
+        "CardioSense AI — AI-Powered Smart Cardiac Patient Monitoring "
+        "& Clinical Decision Support System.\n\n"
         "**⚕️ MEDICAL DISCLAIMER**: This is a clinical decision support tool. "
         "It does NOT diagnose medical conditions or replace professional medical judgment. "
         "All AI predictions and risk assessments must be reviewed and validated by licensed healthcare professionals. "
@@ -99,7 +104,7 @@ if os.path.exists(assets_dir):
 if os.path.exists(dashboard_dir):
     app.mount("/cardiotrack", StaticFiles(directory=dashboard_dir, html=True), name="cardiotrack")
 
-# ── Include Routers ──
+# ── Include Routers — Original ──
 app.include_router(auth.router)
 app.include_router(patients.router)
 app.include_router(vitals.router)
@@ -107,6 +112,20 @@ app.include_router(predictions.router)
 app.include_router(symptoms.router)
 app.include_router(medications.router)
 app.include_router(dashboard.router)
+
+# ── Include Routers — New (Hospital Intelligence Platform) ──
+app.include_router(hospitals.router)
+app.include_router(doctor_availability.router)
+app.include_router(shifts.router)
+app.include_router(transfers.router)
+app.include_router(chat.router)
+app.include_router(visitors.router)
+app.include_router(ratings.router)
+app.include_router(audit.router)
+app.include_router(documents.router)
+app.include_router(timeline.router)
+app.include_router(role_dashboards.router)
+app.include_router(load_balancer.router)
 
 
 # ── Root Endpoint & SPA Fallback ──

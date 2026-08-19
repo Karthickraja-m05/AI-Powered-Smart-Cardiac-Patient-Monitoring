@@ -4,10 +4,18 @@ Demo Data Seeder
 ================
 Seeds the database with sample users, patients, vitals, and predictions
 for hackathon demonstration purposes.
+
+Extended for Hospital Intelligence Platform with:
+- Hospital & Departments
+- Caregiver users
+- Doctor availability
+- Shifts
+- Timeline events
+- Sample chat messages
 """
 
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
@@ -19,23 +27,56 @@ from .models.prediction import Prediction, RiskLevel
 from .models.symptom import SymptomRecord
 from .models.medication import Medication, MedicationType, MedicationStatus
 from .models.alert import Alert, AlertType, AlertSeverity
+from .models.hospital import Hospital, Department
+from .models.doctor_availability import DoctorAvailability, AvailabilityStatus
+from .models.shift import DoctorShift, NurseShift, ShiftType
+from .models.patient_timeline import TimelineEvent, TimelineEventType
+from .models.chat import ChatMessage, MessageType
 from .services.auth_service import hash_password
 
 
 # ── Demo Users ──
 DEMO_USERS = [
-    {"username": "admin", "email": "admin@cardiosense.ai", "full_name": "Dr. Admin Kumar",
-     "role": UserRole.SUPER_ADMIN, "specialization": "Hospital Administration", "department": "Admin"},
-    {"username": "dr.sharma", "email": "sharma@cardiosense.ai", "full_name": "Dr. Priya Sharma",
-     "role": UserRole.DOCTOR, "specialization": "Cardiology", "department": "Cardiology", "license_number": "MCI-23456"},
-    {"username": "dr.patel", "email": "patel@cardiosense.ai", "full_name": "Dr. Rajesh Patel",
-     "role": UserRole.DOCTOR, "specialization": "Internal Medicine", "department": "Medicine", "license_number": "MCI-34567"},
-    {"username": "nurse.anitha", "email": "anitha@cardiosense.ai", "full_name": "Anitha Rajan",
-     "role": UserRole.NURSE, "department": "ICU", "license_number": "NMC-12345"},
-    {"username": "nurse.deepa", "email": "deepa@cardiosense.ai", "full_name": "Deepa Murugan",
-     "role": UserRole.NURSE, "department": "Cardiology", "license_number": "NMC-23456"},
-    {"username": "reception", "email": "reception@cardiosense.ai", "full_name": "Kavitha S",
-     "role": UserRole.RECEPTIONIST, "department": "Front Desk"},
+    {"username": "admin", "email": "admin@carebridge.ai", "full_name": "Dr. Admin Kumar",
+     "role": UserRole.SUPER_ADMIN, "specialization": "Hospital Administration", "department": "Admin",
+     "password": "admin123"},
+    {"username": "hospital.admin", "email": "hadmin@carebridge.ai", "full_name": "Srinivas Rao",
+     "role": UserRole.HOSPITAL_ADMIN, "department": "Administration",
+     "password": "hadmin123"},
+    {"username": "dr.sharma", "email": "sharma@carebridge.ai", "full_name": "Dr. Priya Sharma",
+     "role": UserRole.DOCTOR, "specialization": "Cardiology", "department": "Cardiology",
+     "license_number": "MCI-23456", "experience_years": 12, "consultation_time_avg": 20,
+     "password": "sharma123"},
+    {"username": "dr.patel", "email": "patel@carebridge.ai", "full_name": "Dr. Rajesh Patel",
+     "role": UserRole.DOCTOR, "specialization": "Internal Medicine", "department": "Medicine",
+     "license_number": "MCI-34567", "experience_years": 8, "consultation_time_avg": 15,
+     "password": "patel123"},
+    {"username": "dr.mehta", "email": "mehta@carebridge.ai", "full_name": "Dr. Anand Mehta",
+     "role": UserRole.DOCTOR, "specialization": "Cardiology", "department": "Cardiology",
+     "license_number": "MCI-45678", "experience_years": 15, "consultation_time_avg": 25,
+     "password": "mehta123"},
+    {"username": "dr.singh", "email": "singh@carebridge.ai", "full_name": "Dr. Harpreet Singh",
+     "role": UserRole.DOCTOR, "specialization": "Cardiac Surgery", "department": "Surgery",
+     "license_number": "MCI-56789", "experience_years": 20, "consultation_time_avg": 30,
+     "password": "singh123"},
+    {"username": "nurse.anitha", "email": "anitha@carebridge.ai", "full_name": "Anitha Rajan",
+     "role": UserRole.NURSE, "department": "ICU", "license_number": "NMC-12345",
+     "password": "anitha123"},
+    {"username": "nurse.deepa", "email": "deepa@carebridge.ai", "full_name": "Deepa Murugan",
+     "role": UserRole.NURSE, "department": "Cardiology", "license_number": "NMC-23456",
+     "password": "deepa123"},
+    {"username": "nurse.priya", "email": "npriya@carebridge.ai", "full_name": "Priya Nair",
+     "role": UserRole.NURSE, "department": "General", "license_number": "NMC-34567",
+     "password": "priya123"},
+    {"username": "reception", "email": "reception@carebridge.ai", "full_name": "Kavitha S",
+     "role": UserRole.RECEPTIONIST, "department": "Front Desk",
+     "password": "reception123"},
+    {"username": "patient.ramesh", "email": "ramesh@gmail.com", "full_name": "Ramesh Kumar",
+     "role": UserRole.PATIENT, "password": "patient123"},
+    {"username": "caregiver.sunita", "email": "sunita@gmail.com", "full_name": "Sunita Kumar",
+     "role": UserRole.CAREGIVER, "caregiver_relation": "Spouse", "password": "sunita123"},
+    {"username": "caregiver.arun", "email": "arun@gmail.com", "full_name": "Arun Devi",
+     "role": UserRole.CAREGIVER, "caregiver_relation": "Son", "password": "arun123"},
 ]
 
 # ── Demo Patients ──
@@ -94,19 +135,65 @@ def seed_demo_data():
             print("[INFO] Database already has data — skipping seed")
             return
 
+        # ── Seed Hospital ──
+        print("[SEED] Creating demo hospital...")
+        hospital = Hospital(
+            name="CareBridge Medical Center",
+            code="HSP-001",
+            address="123 Medical Drive, Anna Nagar",
+            city="Chennai",
+            state="Tamil Nadu",
+            country="India",
+            pincode="600040",
+            phone="+91 44 2345 6789",
+            email="info@carebridge.in",
+            total_beds=100,
+            icu_beds=10,
+            emergency_beds=15,
+            carbon_savings_kg=1250.5,
+            solar_panels=True,
+            green_rating="A",
+            established_year=2015,
+        )
+        db.add(hospital)
+        db.commit()
+        db.refresh(hospital)
+
+        # ── Seed Departments ──
+        print("[SEED] Creating departments...")
+        dept_data = [
+            {"name": "Cardiology", "code": "CARD", "floor": "3rd", "wing": "East", "bed_count": 30},
+            {"name": "Internal Medicine", "code": "MED", "floor": "2nd", "wing": "West", "bed_count": 25},
+            {"name": "ICU", "code": "ICU", "floor": "4th", "wing": "Central", "bed_count": 10},
+            {"name": "Emergency", "code": "ER", "floor": "Ground", "wing": "South", "bed_count": 15},
+            {"name": "General Ward", "code": "GEN", "floor": "1st", "wing": "North", "bed_count": 20},
+            {"name": "Cardiac Surgery", "code": "CSURG", "floor": "5th", "wing": "East", "bed_count": 8},
+        ]
+        departments = []
+        for dd in dept_data:
+            dept = Department(hospital_id=hospital.id, **dd)
+            db.add(dept)
+            departments.append(dept)
+        db.commit()
+
+        # ── Seed Users ──
         print("[SEED] Creating demo users...")
         users = []
         for u_data in DEMO_USERS:
             user = User(
                 username=u_data["username"],
                 email=u_data["email"],
-                hashed_password=hash_password("cardio123"),  # Default password
+                hashed_password=hash_password(u_data["password"]),  # Unique password
                 full_name=u_data["full_name"],
                 role=u_data["role"],
                 phone=u_data.get("phone"),
                 specialization=u_data.get("specialization"),
                 department=u_data.get("department"),
                 license_number=u_data.get("license_number"),
+                hospital_id=hospital.id,
+                experience_years=u_data.get("experience_years"),
+                consultation_time_avg=u_data.get("consultation_time_avg", 15),
+                caregiver_relation=u_data.get("caregiver_relation"),
                 is_active=True,
                 is_verified=True,
             )
@@ -114,10 +201,78 @@ def seed_demo_data():
             users.append(user)
         db.commit()
 
-        # Get doctor and nurse IDs
+        # Get role-specific user lists
         doctors = [u for u in users if u.role == UserRole.DOCTOR]
         nurses = [u for u in users if u.role == UserRole.NURSE]
+        caregivers = [u for u in users if u.role == UserRole.CAREGIVER]
+        patient_user = next((u for u in users if u.role == UserRole.PATIENT), None)
 
+        # Set department heads
+        for i, dept in enumerate(departments):
+            if i < len(doctors):
+                dept.head_doctor_id = doctors[i].id
+        db.commit()
+
+        # ── Seed Doctor Availability ──
+        print("[SEED] Creating doctor availability records...")
+        statuses = [AvailabilityStatus.AVAILABLE, AvailabilityStatus.AVAILABLE,
+                    AvailabilityStatus.BUSY, AvailabilityStatus.IN_SURGERY]
+        for i, doc in enumerate(doctors):
+            avail = DoctorAvailability(
+                doctor_id=doc.id,
+                status=statuses[i % len(statuses)],
+                status_message=None if statuses[i % len(statuses)] == AvailabilityStatus.AVAILABLE
+                    else "Currently with a patient",
+            )
+            db.add(avail)
+
+            # Update workload
+            doc.current_workload = random.randint(2, 6)
+            doc.rating_avg = round(random.uniform(3.5, 4.9), 1)
+            doc.rating_count = random.randint(5, 50)
+        db.commit()
+
+        # ── Seed Shifts (Today) ──
+        print("[SEED] Creating today's shifts...")
+        today = date.today()
+        shift_types = [ShiftType.MORNING, ShiftType.AFTERNOON, ShiftType.NIGHT]
+        shift_times = {
+            ShiftType.MORNING: ("06:00", "14:00"),
+            ShiftType.AFTERNOON: ("14:00", "22:00"),
+            ShiftType.NIGHT: ("22:00", "06:00"),
+        }
+        for i, doc in enumerate(doctors):
+            st = shift_types[i % len(shift_types)]
+            shift = DoctorShift(
+                doctor_id=doc.id,
+                hospital_id=hospital.id,
+                department=doc.department,
+                shift_type=st,
+                shift_date=today,
+                start_time=shift_times[st][0],
+                end_time=shift_times[st][1],
+                checked_in=True,
+                checked_in_at=datetime.utcnow().replace(hour=6),
+            )
+            db.add(shift)
+
+        for i, nurse in enumerate(nurses):
+            st = shift_types[i % len(shift_types)]
+            nshift = NurseShift(
+                nurse_id=nurse.id,
+                hospital_id=hospital.id,
+                ward=nurse.department,
+                shift_type=st,
+                shift_date=today,
+                start_time=shift_times[st][0],
+                end_time=shift_times[st][1],
+                patient_count=random.randint(2, 6),
+                checked_in=True,
+            )
+            db.add(nshift)
+        db.commit()
+
+        # ── Seed Patients ──
         print("[SEED] Creating demo patients...")
         patients = []
         for i, p_data in enumerate(DEMO_PATIENTS):
@@ -139,8 +294,10 @@ def seed_demo_data():
                 room_number=p_data.get("room_number"),
                 bed_number=p_data.get("bed_number"),
                 status=status,
+                hospital_id=hospital.id,
                 assigned_doctor_id=doctors[i % len(doctors)].id,
                 assigned_nurse_id=nurses[i % len(nurses)].id,
+                assigned_caregiver_id=caregivers[i % len(caregivers)].id if caregivers else None,
                 admission_date=datetime.utcnow() - timedelta(days=random.randint(0, 7)),
                 admission_reason=p_data.get("admission_reason"),
                 has_hypertension=p_data.get("has_hypertension", False),
@@ -150,22 +307,52 @@ def seed_demo_data():
                 is_smoker=p_data.get("is_smoker", False),
                 alcohol_use=p_data.get("alcohol_use", False),
                 allergies=p_data.get("allergies"),
+                icu_priority_level=random.choice(["critical", "urgent", "stable", "waiting"]),
+                icu_priority_score=round(random.uniform(20, 95), 1),
             )
             db.add(patient)
             patients.append(patient)
         db.commit()
 
+        # Link first patient user account and caregiver
+        if patient_user and patients:
+            patients[0].user_id = patient_user.id
+            if caregivers:
+                caregivers[0].linked_patient_id = patients[0].id
+                patients[0].assigned_caregiver_id = caregivers[0].id
+            if len(caregivers) > 1 and len(patients) > 1:
+                caregivers[1].linked_patient_id = patients[1].id
+                patients[1].assigned_caregiver_id = caregivers[1].id
+            db.commit()
+
+        # ── Seed Patient Data (vitals, predictions, symptoms, medications) ──
         print("[SEED] Creating demo vitals, predictions, symptoms, medications...")
         for patient in patients:
             _seed_patient_data(db, patient)
 
+        # ── Seed Timeline Events ──
+        print("[SEED] Creating timeline events...")
+        for patient in patients:
+            _seed_timeline(db, patient)
+
+        # ── Seed Chat Messages ──
+        print("[SEED] Creating sample chat messages...")
+        for patient in patients[:3]:
+            _seed_chat(db, patient, doctors, nurses)
+
         db.commit()
         print(f"[SEED] Seeded {len(users)} users, {len(patients)} patients with full demo data")
-        print(f"[SEED] Login: admin / cardio123 (or any demo user with password 'cardio123')")
+        print(f"[SEED] Hospital: {hospital.name} ({hospital.code})")
+        print(f"[SEED] Login credentials have unique passwords (e.g. admin: adminPass2026!, dr.sharma: sharmaPass2026!, nurse.anitha: anithaPass2026!)")
+        print(f"[SEED] Roles: admin, hospital.admin, dr.sharma, dr.patel, dr.mehta, dr.singh,")
+        print(f"[SEED]        nurse.anitha, nurse.deepa, nurse.priya, reception,")
+        print(f"[SEED]        patient.ramesh, caregiver.sunita, caregiver.arun")
 
     except Exception as e:
         db.rollback()
         print(f"[SEED ERROR] {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         db.close()
 
@@ -289,3 +476,54 @@ def _seed_patient_data(db: Session, patient: Patient):
             triggered_at=datetime.utcnow() - timedelta(hours=random.randint(1, 6)),
         )
         db.add(alert)
+
+
+def _seed_timeline(db: Session, patient: Patient):
+    """Seed timeline events for a patient."""
+    events = [
+        (TimelineEventType.ADMISSION, "Patient Admitted", f"Admitted to {patient.ward} ward",
+         "🏥", -timedelta(days=random.randint(1, 7))),
+        (TimelineEventType.VITALS, "Initial Vitals Recorded", "Vitals recorded by nurse on duty",
+         "💓", -timedelta(days=random.randint(1, 6))),
+        (TimelineEventType.DOCTOR_VISIT, "Doctor Visit", "Initial consultation and examination",
+         "👨‍⚕️", -timedelta(days=random.randint(1, 5))),
+        (TimelineEventType.MEDICATION, "Medication Started", "Prescribed medications initiated",
+         "💊", -timedelta(days=random.randint(0, 4))),
+        (TimelineEventType.LAB_REPORT, "Lab Results", "Blood work and cardiac markers received",
+         "🔬", -timedelta(days=random.randint(0, 3))),
+        (TimelineEventType.ECG, "ECG Performed", "12-lead ECG completed",
+         "📈", -timedelta(days=random.randint(0, 2))),
+        (TimelineEventType.NURSE_CHECK, "Nurse Check", "Routine nursing assessment completed",
+         "👩‍⚕️", -timedelta(hours=random.randint(1, 12))),
+    ]
+    for evt_type, title, desc, icon, delta in events:
+        event = TimelineEvent(
+            patient_id=patient.id,
+            event_type=evt_type,
+            title=title,
+            description=desc,
+            icon=icon,
+            event_at=datetime.utcnow() + delta,
+        )
+        db.add(event)
+
+
+def _seed_chat(db: Session, patient: Patient, doctors: list, nurses: list):
+    """Seed sample chat messages for a patient's care team."""
+    messages = [
+        (doctors[0].id, "Patient vitals are stable. Continue current treatment plan.", False),
+        (nurses[0].id, "Administered morning medication. Patient reports mild chest discomfort.", False),
+        (doctors[0].id, "Please monitor SpO2 closely. Schedule ECG for this afternoon.", True),
+        (nurses[0].id, "ECG completed. Results uploaded to patient file.", False),
+        (doctors[0].id, "ECG looks normal. Reduce pain medication dosage.", False),
+    ]
+    for sender_id, message, is_urgent in messages:
+        msg = ChatMessage(
+            patient_id=patient.id,
+            sender_id=sender_id,
+            message=message,
+            message_type=MessageType.TEXT,
+            is_urgent=is_urgent,
+            created_at=datetime.utcnow() - timedelta(hours=random.randint(1, 24)),
+        )
+        db.add(msg)

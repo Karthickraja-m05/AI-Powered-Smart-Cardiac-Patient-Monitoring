@@ -6,7 +6,9 @@ JWT authentication, registration, profile management.
 """
 
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, status
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from ..database import get_db

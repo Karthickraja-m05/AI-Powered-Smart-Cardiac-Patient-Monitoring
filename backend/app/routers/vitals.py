@@ -7,7 +7,9 @@ Record, query vital signs. WebSocket for real-time streaming.
 
 from datetime import datetime, timedelta
 from typing import Optional, List
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 import json
 

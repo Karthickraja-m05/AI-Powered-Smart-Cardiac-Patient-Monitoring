@@ -6,7 +6,9 @@ Run ML predictions and query prediction history.
 """
 
 from typing import List, Optional
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, Query
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from ..database import get_db

@@ -39,6 +39,14 @@ class UserResponse(BaseModel):
     profile_photo: Optional[str] = None
     specialization: Optional[str] = None
     department: Optional[str] = None
+    hospital_id: Optional[int] = None
+    experience_years: Optional[int] = None
+    rating_avg: Optional[float] = None
+    rating_count: int = 0
+    current_workload: int = 0
+    consultation_time_avg: int = 15
+    linked_patient_id: Optional[int] = None
+    caregiver_relation: Optional[str] = None
     is_active: bool
     created_at: datetime
 

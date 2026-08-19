@@ -7,6 +7,7 @@ Emergency detection alerts triggered by abnormal vitals or AI risk scores.
 
 import enum
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, DateTime, Enum, Text,
     ForeignKey, JSON

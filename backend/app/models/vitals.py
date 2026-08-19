@@ -7,6 +7,7 @@ Stores individual vital sign readings from IoT sensors or manual entry.
 
 import enum
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from sqlalchemy import (
     Column, Integer, Float, String, DateTime, Enum, Text,
     ForeignKey, JSON

@@ -2,7 +2,7 @@
 """
 Application Configuration
 =========================
-Pydantic Settings for the Cardiac Monitoring Platform.
+Pydantic Settings for the CareFlow AI Platform.
 Loads from environment variables / .env file.
 """
 
@@ -25,12 +25,12 @@ class Settings(BaseSettings):
 
     # ── Database ──
     DATABASE_URL: str = Field(
-        default="sqlite:///./cardiosense.db",
+        default="sqlite:///./carebridge.db",
         description="SQLAlchemy database URL. Use postgresql://user:pass@host/db for production.",
     )
 
     # ── JWT ──
-    JWT_SECRET_KEY: str = "cardiosense-super-secret-key-change-in-production-2024"
+    JWT_SECRET_KEY: str = "carebridge-super-secret-key-change-in-production-2024"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours
 
@@ -44,14 +44,14 @@ class Settings(BaseSettings):
     # ── MQTT (IoT) ──
     MQTT_BROKER: str = "localhost"
     MQTT_PORT: int = 1883
-    MQTT_TOPIC_PREFIX: str = "cardiosense/devices"
+    MQTT_TOPIC_PREFIX: str = "carebridge/devices"
 
     # ── Notifications ──
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM_EMAIL: str = "alerts@cardiosense.ai"
+    SMTP_FROM_EMAIL: str = "alerts@carebridge.ai"
 
     # ── Alert Thresholds ──
     ALERT_HR_LOW: int = 40

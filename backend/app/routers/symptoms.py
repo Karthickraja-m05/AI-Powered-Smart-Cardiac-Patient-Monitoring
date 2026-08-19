@@ -6,7 +6,9 @@ Track and query patient symptoms.
 """
 
 from typing import List
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, Query
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from ..database import get_db
