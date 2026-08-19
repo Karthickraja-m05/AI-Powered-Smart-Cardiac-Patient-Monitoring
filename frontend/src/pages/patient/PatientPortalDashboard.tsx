@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { dashboardAPI } from '../../services/api';
 import type { PatientDashboardData } from '../../types';
 
 export default function PatientDashboard() {
   const [data, setData] = useState<PatientDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alertSent, setAlertSent] = useState(false);
 
   useEffect(() => {
     dashboardAPI.getPatientDashboard().then(res => { setData(res.data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  const handleEmergency = () => {
+    setAlertSent(true);
+    toast.error('🚨 Emergency Alert Broadcasted! The nursing station and duty cardiologist have been alerted.', {
+      duration: 6000,
+    });
+  };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-2 border-sky-400 border-t-transparent rounded-full" /></div>;
 
@@ -30,9 +39,14 @@ export default function PatientDashboard() {
         animate={{ opacity: 1, scale: 1 }}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-lg shadow-lg shadow-red-500/30 hover:shadow-red-500/40 transition-all"
+        onClick={handleEmergency}
+        className={`w-full py-4 rounded-2xl text-white font-bold text-lg shadow-lg transition-all cursor-pointer ${
+          alertSent
+            ? 'bg-red-700 animate-pulse border-2 border-white'
+            : 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/30 hover:shadow-red-500/40'
+        }`}
       >
-        🚨 Emergency Alert
+        {alertSent ? '🚨 EMERGENCY ACTIVE — Help Dispatched!' : '🚨 Emergency Alert (Press for Immediate Assistance)'}
       </motion.button>
 
       {/* Current Vitals */}

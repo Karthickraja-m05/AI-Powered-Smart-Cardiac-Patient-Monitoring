@@ -3,7 +3,7 @@ import type {
   User, Patient, VitalSign, Prediction, Alert, DashboardStats, DashboardCharts,
   Medication, SymptomRecord, Hospital, Department, DoctorAvailability,
   DoctorSearchResult, DoctorReassignment, PatientTransfer, ChatMessage,
-  Visitor, DoctorRating, DoctorRatingSummary, AuditLogEntry, TimelineEvent,
+  Visitor, Appointment, DoctorRating, DoctorRatingSummary, AuditLogEntry, TimelineEvent,
   PatientDocument, DoctorShift, NurseShift, WaitingTime,
   DoctorDashboardData, NurseDashboardData, ReceptionistDashboardData,
   PatientDashboardData, CaregiverDashboardData, HospitalAdminDashboardData,
@@ -145,11 +145,30 @@ export const chatAPI = {
 // ─── Visitors ───
 export const visitorsAPI = {
   register: (data: any) => api.post<Visitor>('/visitors', data),
+  listAll: (params?: { status?: string; limit?: number }) => api.get<Visitor[]>('/visitors', { params }),
   getForPatient: (patientId: number, status?: string) =>
     api.get<Visitor[]>(`/visitors/${patientId}`, { params: { status } }),
   checkIn: (visitorId: number) => api.post<Visitor>(`/visitors/${visitorId}/check-in`),
   checkOut: (visitorId: number) => api.post<Visitor>(`/visitors/${visitorId}/check-out`),
   verifyQR: (qrToken: string) => api.post<Visitor>(`/visitors/verify/${qrToken}`),
+};
+
+// ─── Appointments ───
+export const appointmentsAPI = {
+  list: (params?: { patient_id?: number; doctor_id?: number; status?: string; limit?: number }) =>
+    api.get<Appointment[]>('/appointments', { params }),
+  get: (id: number) => api.get<Appointment>(`/appointments/${id}`),
+  create: (data: {
+    patient_id: number;
+    doctor_id: number;
+    scheduled_at: string;
+    duration_minutes?: number;
+    appointment_type?: string;
+    reason?: string;
+    doctor_notes?: string;
+  }) => api.post<Appointment>('/appointments', data),
+  update: (id: number, data: Partial<Appointment>) => api.put<Appointment>(`/appointments/${id}`, data),
+  cancel: (id: number) => api.delete(`/appointments/${id}`),
 };
 
 // ─── Ratings ───

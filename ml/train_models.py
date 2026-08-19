@@ -81,8 +81,8 @@ def train():
             use_label_encoder=False, eval_metric="logloss", random_state=42,
         )
         print("[OK] XGBoost loaded")
-    except ImportError:
-        print("[SKIP] XGBoost not installed")
+    except (ImportError, Exception) as e:
+        print(f"[SKIP] XGBoost not available ({e})")
 
     try:
         from lightgbm import LGBMClassifier
@@ -91,8 +91,8 @@ def train():
             random_state=42, verbose=-1,
         )
         print("[OK] LightGBM loaded")
-    except ImportError:
-        print("[SKIP] LightGBM not installed")
+    except (ImportError, Exception) as e:
+        print(f"[SKIP] LightGBM not available ({e})")
 
     try:
         from catboost import CatBoostClassifier
@@ -101,8 +101,8 @@ def train():
             random_seed=42, verbose=0,
         )
         print("[OK] CatBoost loaded")
-    except ImportError:
-        print("[SKIP] CatBoost not installed")
+    except (ImportError, Exception) as e:
+        print(f"[SKIP] CatBoost not available ({e})")
 
     # ── Train & Evaluate ──
     print("\n" + "=" * 70)

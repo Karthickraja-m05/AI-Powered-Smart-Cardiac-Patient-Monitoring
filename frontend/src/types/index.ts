@@ -291,6 +291,25 @@ export interface Visitor {
   created_at: string;
 }
 
+export interface Appointment {
+  id: number;
+  patient_id: number;
+  patient_name?: string;
+  patient_uid?: string;
+  doctor_id: number;
+  doctor_name?: string;
+  doctor_specialization?: string;
+  scheduled_at: string;
+  duration_minutes?: number;
+  appointment_type?: string;
+  status: string;
+  reason?: string;
+  doctor_notes?: string;
+  diagnosis?: string;
+  treatment_plan?: string;
+  created_at: string;
+}
+
 export interface DoctorRating {
   id: number;
   doctor_id: number;

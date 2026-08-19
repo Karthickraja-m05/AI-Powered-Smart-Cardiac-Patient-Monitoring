@@ -25,6 +25,7 @@ from .routers import (
     auth, patients, vitals, predictions, symptoms, medications, dashboard,
     hospitals, doctor_availability, shifts, transfers, chat, visitors,
     ratings, audit, documents, timeline, role_dashboards, load_balancer,
+    appointments,
 )
 
 
@@ -126,6 +127,7 @@ app.include_router(documents.router)
 app.include_router(timeline.router)
 app.include_router(role_dashboards.router)
 app.include_router(load_balancer.router)
+app.include_router(appointments.router)
 
 
 # ── Root Endpoint & SPA Fallback ──

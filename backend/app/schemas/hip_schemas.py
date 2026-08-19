@@ -282,6 +282,53 @@ class VisitorResponse(BaseModel):
 
 
 # ═══════════════════════════════════════════
+# APPOINTMENTS
+# ═══════════════════════════════════════════
+
+class AppointmentCreate(BaseModel):
+    patient_id: int
+    doctor_id: int
+    scheduled_at: datetime
+    duration_minutes: int = 30
+    appointment_type: Optional[str] = "checkup"
+    reason: Optional[str] = None
+    doctor_notes: Optional[str] = None
+
+
+class AppointmentUpdate(BaseModel):
+    scheduled_at: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    appointment_type: Optional[str] = None
+    status: Optional[str] = None
+    reason: Optional[str] = None
+    doctor_notes: Optional[str] = None
+    diagnosis: Optional[str] = None
+    treatment_plan: Optional[str] = None
+
+
+class AppointmentResponse(BaseModel):
+    id: int
+    patient_id: int
+    patient_name: Optional[str] = None
+    patient_uid: Optional[str] = None
+    doctor_id: int
+    doctor_name: Optional[str] = None
+    doctor_specialization: Optional[str] = None
+    scheduled_at: datetime
+    duration_minutes: int = 30
+    appointment_type: Optional[str] = "checkup"
+    status: str
+    reason: Optional[str] = None
+    doctor_notes: Optional[str] = None
+    diagnosis: Optional[str] = None
+    treatment_plan: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ═══════════════════════════════════════════
 # DOCTOR RATING
 # ═══════════════════════════════════════════
 

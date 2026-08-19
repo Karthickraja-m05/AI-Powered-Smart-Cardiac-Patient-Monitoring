@@ -38,6 +38,24 @@ def register_visitor(
     return VisitorResponse.model_validate(visitor)
 
 
+@router.get("", response_model=list[VisitorResponse])
+def list_all_visitors(
+    status: str = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all visitors across patients."""
+    q = db.query(Visitor)
+    if status:
+        try:
+            q = q.filter(Visitor.status == VisitorStatus(status))
+        except ValueError:
+            pass
+    visitors = q.order_by(Visitor.created_at.desc()).limit(limit).all()
+    return [VisitorResponse.model_validate(v) for v in visitors]
+
+
 @router.get("/{patient_id}", response_model=list[VisitorResponse])
 def get_visitors(
     patient_id: int,

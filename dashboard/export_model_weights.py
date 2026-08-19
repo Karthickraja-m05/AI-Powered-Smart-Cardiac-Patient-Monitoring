@@ -16,14 +16,25 @@ Output: model_weights.json
 
 import os
 import sys
+import io
 import json
 import numpy as np
 import joblib
 
+# Force UTF-8 output on Windows
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(BASE_DIR)
-MODEL_PATH = os.path.join(PARENT_DIR, "heart_model.pkl")
-SCALER_PATH = os.path.join(PARENT_DIR, "scaler.pkl")
+
+# Prefer trained model from ml/models/ if present
+MODEL_PATH = os.path.join(PARENT_DIR, "ml", "models", "best_model.pkl")
+SCALER_PATH = os.path.join(PARENT_DIR, "ml", "models", "scaler.pkl")
+if not os.path.exists(MODEL_PATH):
+    MODEL_PATH = os.path.join(PARENT_DIR, "heart_model.pkl")
+    SCALER_PATH = os.path.join(PARENT_DIR, "scaler.pkl")
+
 OUTPUT_PATH = os.path.join(BASE_DIR, "model_weights.json")
 
 def export_weights():

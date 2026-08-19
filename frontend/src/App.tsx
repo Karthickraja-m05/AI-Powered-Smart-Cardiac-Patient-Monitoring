@@ -28,6 +28,8 @@ import CaregiverDashboard from './pages/caregiver/CaregiverDashboard.tsx';
 import DoctorSearchComponent from './components/features/DoctorSearch.tsx';
 import AuditLogViewer from './components/features/AuditLogViewer.tsx';
 import ICUPriorityBoard from './components/features/ICUPriorityBoard.tsx';
+import VisitorManagement from './components/features/VisitorManagement.tsx';
+import AppointmentsPage from './pages/AppointmentsPage.tsx';
 
 // Map each role to its home dashboard
 const roleDashboards: Record<UserRole, React.ComponentType> = {
@@ -88,8 +90,14 @@ export default function App() {
 
                   {/* New feature pages */}
                   <Route path="/doctor-search" element={<DoctorSearchComponent />} />
+                  <Route path="/appointments" element={<AppointmentsPage />} />
+                  <Route path="/visitors" element={<VisitorManagement />} />
                   <Route path="/audit" element={<AuditLogViewer />} />
                   <Route path="/icu-priority" element={<ICUPriorityBoard />} />
+
+                  {/* Role-specific shortcuts */}
+                  <Route path="/register" element={<PatientList />} />
+                  <Route path="/availability" element={<DoctorDashboard />} />
 
                   {/* Legacy admin dashboard (accessible by admins) */}
                   <Route path="/admin-dashboard" element={<AdminDashboard />} />
