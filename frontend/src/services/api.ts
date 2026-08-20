@@ -200,4 +200,22 @@ export const timelineAPI = {
     api.get<TimelineEvent[]>(`/timeline/${patientId}`, { params: { event_type: eventType } }),
 };
 
+// ─── Clinical Intelligence & Innovation API ───
+export const intelligenceAPI = {
+  getBaseline: (patientId: number, windowSize: number = 30) =>
+    api.get<import('../types').PatientBaselineData>(`/intelligence/baseline/${patientId}`, { params: { window_size: windowSize } }),
+  getForecast: (patientId: number) =>
+    api.get<import('../types').RiskForecastData>(`/intelligence/forecast/${patientId}`),
+  getCounterfactuals: (features: Record<string, number>) =>
+    api.post<import('../types').CounterfactualData>('/intelligence/counterfactuals', { features }),
+  runWhatIf: (features: Record<string, number>) =>
+    api.post<{ simulated_probability: number; simulated_risk_percentage: number; simulated_risk_level: string; feature_importances: Record<string, number> }>('/intelligence/what-if', { features }),
+  getTransferRecommendation: (patientId: number) =>
+    api.get<import('../types').SmartTransferRecommendation>(`/intelligence/transfer-recommendation/${patientId}`),
+  getPostDischarge: (patientId: number) =>
+    api.get<import('../types').PostDischargeData>(`/intelligence/post-discharge/${patientId}`),
+  getPrivacySummary: () =>
+    api.get<import('../types').PrivacyAuditSummary>('/intelligence/privacy-audit-summary'),
+};
+
 export default api;

@@ -480,3 +480,129 @@ export interface HospitalAdminDashboardData {
   departments: any[];
   equipment_status: any[];
 }
+
+// ─── Clinical Intelligence Types ───
+
+export interface BaselineMetric {
+  baseline_mean: number;
+  baseline_std: number;
+  normal_range_low: number;
+  normal_range_high: number;
+  unit: string;
+  is_personalized: boolean;
+  samples_used: number;
+}
+
+export interface VitalDeviation {
+  current_value: number;
+  z_score: number;
+  status: 'NORMAL' | 'MILD_DEVIATION' | 'CRITICAL_DEVIATION';
+  unit: string;
+}
+
+export interface PatientBaselineData {
+  patient_id: number;
+  window_size: number;
+  total_historical_samples: number;
+  is_model_trained: boolean;
+  baselines: Record<string, BaselineMetric>;
+  current_deviations: Record<string, VitalDeviation>;
+  overall_instability_index: number;
+  evaluated_at: string;
+}
+
+export interface VitalTrajectory {
+  current: number;
+  slope_per_min: number;
+  forecast_5m: number;
+  forecast_10m: number;
+  forecast_15m: number;
+}
+
+export interface RiskForecastData {
+  patient_id: number;
+  status: string;
+  current_risk_percentage: number;
+  projected_risk_percentage_15m: number;
+  risk_trajectory_delta: number;
+  trend_velocity: 'RAPIDLY_WORSENING' | 'MILDLY_WORSENING' | 'STABLE' | 'IMPROVING';
+  trajectories: Record<string, VitalTrajectory>;
+  early_warning: string | null;
+  computed_at: string;
+}
+
+export interface CounterfactualAction {
+  biomarker: string;
+  display_name: string;
+  current_value: number;
+  target_value: number;
+  unit: string;
+  projected_risk_with_intervention: number;
+  projected_risk_level: string;
+  risk_reduction_percentage: number;
+  action_statement: string;
+}
+
+export interface CounterfactualData {
+  current_risk_percentage: number;
+  current_risk_level: string;
+  counterfactual_actions: CounterfactualAction[];
+  comprehensive_bundle: {
+    projected_risk_percentage: number;
+    projected_risk_level: string;
+    total_possible_risk_reduction: number;
+    summary: string;
+  };
+}
+
+export interface SmartTransferRecommendation {
+  patient_id: number;
+  patient_name: string;
+  current_ward: string;
+  current_risk_score: number;
+  projected_15m_risk_score: number;
+  baseline_instability_index: number;
+  recommended_action: 'MAINTAIN_WARD_MONITORING' | 'URGENT_DOCTOR_REVIEW' | 'ESCALATE_TO_CARDIOLOGY' | 'TRANSFER_TO_ICU' | 'PREPARE_DISCHARGE';
+  urgency_level: 'ROUTINE' | 'ELEVATED' | 'HIGH' | 'IMMEDIATE';
+  target_department: string;
+  clinical_rationale: string;
+  suggested_attending_doctor?: {
+    doctor_id: number;
+    doctor_name: string;
+    specialization: string;
+    match_score: number;
+  };
+  generated_at: string;
+}
+
+export interface PostDischargeData {
+  patient_id: number;
+  patient_name: string;
+  discharge_status: string;
+  medication_adherence_percentage: number;
+  doses_missed: number;
+  missed_appointments_count: number;
+  upcoming_appointments_count: number;
+  active_red_flags: string[];
+  readmission_risk_score: number;
+  follow_up_status: string;
+  recommended_clinical_action: string;
+  evaluated_at: string;
+}
+
+export interface PrivacyAuditSummary {
+  data_processing_model: string;
+  cloud_data_leakage_risk: string;
+  encryption_at_rest: string;
+  transport_security: string;
+  rbac_enforcement: string;
+  total_tamper_evident_audit_entries: number;
+  recent_audit_events: Array<{
+    id: number;
+    action: string;
+    entity: string;
+    user_id: number;
+    timestamp: string;
+  }>;
+  compliance_alignment: string[];
+}

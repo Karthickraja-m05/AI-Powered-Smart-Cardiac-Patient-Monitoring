@@ -8,8 +8,9 @@ import {
 } from 'recharts';
 import { patientsAPI, vitalsAPI, predictionsAPI, medicationsAPI, symptomsAPI } from '../services/api';
 import type { Patient, VitalSign, Prediction, Medication } from '../types';
+import ClinicalIntelligenceHub from '../components/features/ClinicalIntelligenceHub';
 
-const TABS = ['Overview', 'Vitals', 'AI Predictions', 'Medications', 'Symptoms'];
+const TABS = ['Overview', 'Clinical Intelligence', 'Vitals', 'AI Predictions', 'Medications', 'Symptoms'];
 
 export default function PatientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -243,6 +244,10 @@ export default function PatientDetail() {
             )}
           </div>
         </div>
+      )}
+
+      {tab === 'Clinical Intelligence' && (
+        <ClinicalIntelligenceHub patientId={patient.id} />
       )}
 
       {tab === 'Vitals' && (

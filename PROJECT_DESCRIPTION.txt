@@ -1,30 +1,34 @@
 ================================================================================
                         CARDIOSENSE AI — PROJECT DESCRIPTION
-          AI-Powered Smart Cardiac Patient Monitoring & Clinical Decision
-                              Support System
+          Software-Based, Explainable, Offline-Resilient Hospital Intelligence
+                                      Platform
 ================================================================================
 
-GitHub Repository Name:  cardiosense-ai
+GitHub Repository Name:  AI-Powered-Smart-Cardiac-Patient-Monitoring
 
 ================================================================================
-  1. PROJECT OVERVIEW
+  1. PROJECT OVERVIEW & POSITIONING
 ================================================================================
 
-CardioSense AI is a full-stack, AI-powered smart cardiac patient monitoring and
-clinical decision support system designed for hospitals and cardiac care units.
-It integrates real-time IoT vital sign monitoring (via ESP32 microcontrollers),
-machine learning-based cardiovascular risk prediction, and a modern web-based
-clinical dashboard — all in one unified platform.
+"A software-based, explainable, offline-resilient hospital intelligence platform
+that combines personalized cardiac risk monitoring, forward risk forecasting,
+intelligent triage, and role-based clinical workflow automation using medical-
+instrument data."
 
-The system continuously monitors patients' vital signs (heart rate, SpO2, blood
-pressure, temperature, ECG, respiratory rate), runs AI predictions to classify
-cardiovascular risk levels, and triggers intelligent clinical alerts when
-abnormal readings or high-risk patterns are detected.
+CORE INNOVATION HIGHLIGHTS:
+1. Personalized Patient Baseline Learning (Adaptive dynamic Z-scores)
+2. 15-Minute Forward Risk Trend Forecasting (Hemodynamic derivative slopes)
+3. Counterfactual Explainable AI ("What-If" clinical intervention simulator)
+4. Smart Patient Transfer & Escalation Recommender (Ward/ICU decision support)
+5. Post-Discharge Follow-Up Intelligence (Adherence & readmission prevention)
+6. Zero-Leakage On-Premise Privacy Shield & Cryptographic Audit Trails
+7. Intelligent Doctor Load Balancer (4 multi-criteria dispatch algorithms)
+8. CardioTrack Offline Client-Side Engine (Zero-connectivity matrix inference)
 
-⚕️ MEDICAL DISCLAIMER: This is a clinical decision support tool. It does NOT
-diagnose medical conditions or replace professional medical judgment. All AI
-predictions and risk assessments must be reviewed and validated by licensed
-healthcare professionals.
+⚕️ MEDICAL DISCLAIMER: This is an AI-assisted clinical decision support system.
+It does NOT diagnose medical conditions or replace professional medical judgment.
+All AI predictions, trajectories, and risk assessments must be reviewed and
+validated by licensed healthcare professionals.
 
 
 ================================================================================
