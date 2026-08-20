@@ -342,9 +342,12 @@ export interface AuditLogEntry {
   entity_type: string;
   entity_id?: number;
   description?: string;
+  old_value?: any;
+  new_value?: any;
   ip_address?: string;
   created_at: string;
 }
+
 
 export interface TimelineEvent {
   id: number;
@@ -407,6 +410,20 @@ export interface WaitingTime {
   estimated_wait_minutes: number;
 }
 
+export interface InAppNotification {
+  id: number;
+  recipient_id: number;
+  title: string;
+  message: string;
+  channel: string;
+  patient_id?: number;
+  patient_name?: string;
+  patient_uid?: string;
+  alert_id?: number;
+  is_read: boolean;
+  created_at: string;
+}
+
 // Role-specific dashboard data
 export interface DoctorDashboardData {
   todays_appointments: number;
@@ -419,6 +436,10 @@ export interface DoctorDashboardData {
   availability_status: string;
   patients: any[];
   recent_alerts: any[];
+  todays_appointments_list?: Appointment[];
+  upcoming_appointments_list?: Appointment[];
+  consultation_queue?: any[];
+  activity_log?: any[];
 }
 
 export interface NurseDashboardData {

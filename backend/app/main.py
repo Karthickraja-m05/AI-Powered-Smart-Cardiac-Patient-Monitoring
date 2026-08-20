@@ -9,23 +9,28 @@ AI-Powered Smart Cardiac Patient Monitoring & Clinical Decision Support System.
    All results must be reviewed by licensed clinicians.
 """
 
+import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from contextlib import asynccontextmanager
-# pyrefly: ignore [missing-import]
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import FileResponse
-# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
-# pyrefly: ignore [missing-import]
 from fastapi.staticfiles import StaticFiles
 import os
+from typing import Optional
 
 from .config import settings
 from .database import init_db
+from .services.websocket_manager import ws_manager
 from .routers import (
     auth, patients, vitals, predictions, symptoms, medications, dashboard,
     hospitals, doctor_availability, shifts, transfers, chat, visitors,
     ratings, audit, documents, timeline, role_dashboards, load_balancer,
-    appointments, clinical_intelligence,
+    appointments, clinical_intelligence, notifications,
 )
 
 
@@ -43,7 +48,7 @@ async def lifespan(app: FastAPI):
     init_db()
     print("[OK] Database initialized")
 
-    # Seed demo data if database is empty
+    # Seed demo data if database is empty or missing auxiliary tables
     from .seed import seed_demo_data
     seed_demo_data()
 
@@ -105,7 +110,7 @@ if os.path.exists(assets_dir):
 if os.path.exists(dashboard_dir):
     app.mount("/cardiotrack", StaticFiles(directory=dashboard_dir, html=True), name="cardiotrack")
 
-# ── Include Routers — Original ──
+# ── Include Routers — Core & Hospital Intelligence ──
 app.include_router(auth.router)
 app.include_router(patients.router)
 app.include_router(vitals.router)
@@ -113,8 +118,6 @@ app.include_router(predictions.router)
 app.include_router(symptoms.router)
 app.include_router(medications.router)
 app.include_router(dashboard.router)
-
-# ── Include Routers — New (Hospital Intelligence Platform) ──
 app.include_router(hospitals.router)
 app.include_router(doctor_availability.router)
 app.include_router(shifts.router)
@@ -129,6 +132,38 @@ app.include_router(role_dashboards.router)
 app.include_router(load_balancer.router)
 app.include_router(appointments.router)
 app.include_router(clinical_intelligence.router)
+app.include_router(notifications.router)
+
+
+# ── Global Live Broadcast WebSocket Endpoints ──
+@app.websocket("/api/ws/live")
+@app.websocket("/ws/live")
+async def live_broadcast_websocket(websocket: WebSocket, user_id: Optional[int] = Query(None)):
+    """Global WebSocket endpoint for real-time emergency alerts and multi-role dashboard synchronization."""
+    await ws_manager.connect(websocket, user_id)
+    try:
+        while True:
+            # Handle client heartbeats / messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket, user_id)
+    except Exception:
+        ws_manager.disconnect(websocket, user_id)
+
+
+@app.websocket("/api/vitals/ws/{patient_id}")
+@app.websocket("/vitals/ws/{patient_id}")
+async def patient_vitals_websocket(websocket: WebSocket, patient_id: int):
+    """Patient-specific telemetry WebSocket stream."""
+    await ws_manager.connect_patient(websocket, patient_id)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect_patient(websocket, patient_id)
+    except Exception:
+        ws_manager.disconnect_patient(websocket, patient_id)
+
 
 
 # ── Root Endpoint & SPA Fallback ──
@@ -155,11 +190,10 @@ def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
 
 
-# SPA Fallback for other frontend routes (excluding /api, /docs, /redoc, /openapi.json, /uploads, /cardiotrack)
+# SPA Fallback for other frontend routes
 @app.get("/{catchall:path}", tags=["Frontend"])
 def read_fallback(catchall: str):
     if catchall.startswith("api/") or catchall in ("docs", "redoc", "openapi.json"):
-        # Let standard API/docs routes fail naturally or return not found JSON
         return {"detail": "Not Found"}
     
     index_file = os.path.join(frontend_dist_dir, "index.html")

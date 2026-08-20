@@ -82,10 +82,16 @@ def get_current_user(
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
 
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = None
+    if str(user_id).isdigit():
+        user = db.query(User).filter(User.id == int(user_id)).first()
+    else:
+        user = db.query(User).filter(User.username == str(user_id)).first()
+
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
     return user
+
 
 
 def require_roles(*roles: UserRole):

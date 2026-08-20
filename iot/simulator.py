@@ -12,7 +12,12 @@ import math
 import random
 import requests
 import argparse
+import sys
 from datetime import datetime
+
+# Ensure stdout handles unicode emojis safely on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 # ── Configuration ──
 API_URL = "http://localhost:8000/api/vitals/iot"

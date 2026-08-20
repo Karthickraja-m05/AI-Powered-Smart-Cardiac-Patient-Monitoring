@@ -383,11 +383,14 @@ class AuditLogResponse(BaseModel):
     entity_type: str
     entity_id: Optional[int] = None
     description: Optional[str] = None
+    old_value: Optional[dict] = None
+    new_value: Optional[dict] = None
     ip_address: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
 
 
 # ═══════════════════════════════════════════
@@ -445,6 +448,10 @@ class DoctorDashboardData(BaseModel):
     availability_status: str = "available"
     patients: List[dict] = []
     recent_alerts: List[dict] = []
+    todays_appointments_list: List[AppointmentResponse] = []
+    upcoming_appointments_list: List[AppointmentResponse] = []
+    consultation_queue: List[dict] = []
+    activity_log: List[dict] = []
 
 
 class NurseDashboardData(BaseModel):

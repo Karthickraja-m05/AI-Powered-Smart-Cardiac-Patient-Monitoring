@@ -13,6 +13,9 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
+_BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_DEFAULT_DB_PATH = os.path.join(_BACKEND_DIR, "carebridge.db").replace("\\", "/")
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -25,7 +28,7 @@ class Settings(BaseSettings):
 
     # ── Database ──
     DATABASE_URL: str = Field(
-        default="sqlite:///./carebridge.db",
+        default=f"sqlite:///{_DEFAULT_DB_PATH}",
         description="SQLAlchemy database URL. Use postgresql://user:pass@host/db for production.",
     )
 

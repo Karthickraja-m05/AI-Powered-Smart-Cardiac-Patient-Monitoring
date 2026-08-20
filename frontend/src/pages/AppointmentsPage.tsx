@@ -185,6 +185,10 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     loadData();
+
+    const handleSync = () => loadData();
+    window.addEventListener('carebridge:appointment_synced', handleSync);
+    return () => window.removeEventListener('carebridge:appointment_synced', handleSync);
   }, []);
 
   const handleBookAppointment = async (e: React.FormEvent) => {

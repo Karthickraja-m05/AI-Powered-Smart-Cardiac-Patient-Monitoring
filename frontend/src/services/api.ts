@@ -4,7 +4,7 @@ import type {
   Medication, SymptomRecord, Hospital, Department, DoctorAvailability,
   DoctorSearchResult, DoctorReassignment, PatientTransfer, ChatMessage,
   Visitor, Appointment, DoctorRating, DoctorRatingSummary, AuditLogEntry, TimelineEvent,
-  PatientDocument, DoctorShift, NurseShift, WaitingTime,
+  PatientDocument, DoctorShift, NurseShift, WaitingTime, InAppNotification,
   DoctorDashboardData, NurseDashboardData, ReceptionistDashboardData,
   PatientDashboardData, CaregiverDashboardData, HospitalAdminDashboardData,
 } from '../types';
@@ -25,7 +25,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const isLoginRequest = err.config?.url?.includes('/auth/login');
+    if (err.response?.status === 401 && !isLoginRequest) {
       localStorage.removeItem('carebridge_token');
       localStorage.removeItem('carebridge_user');
       window.location.href = '/login';
@@ -84,12 +85,20 @@ export const medicationsAPI = {
   administer: (id: number) => api.post(`/medications/${id}/administer`),
 };
 
-// ─── Dashboard ───
+// ─── Dashboard & Emergency Alerts ───
 export const dashboardAPI = {
   getStats: () => api.get<DashboardStats>('/dashboard/stats'),
   getCharts: () => api.get<DashboardCharts>('/dashboard/charts'),
-  getAlerts: (limit?: number) => api.get<Alert[]>('/dashboard/alerts', { params: { limit } }),
-  acknowledgeAlert: (id: number) => api.post(`/dashboard/alerts/${id}/acknowledge`),
+  getAlerts: (limit?: number, includeAcknowledged?: boolean, severity?: string) =>
+    api.get<Alert[]>('/dashboard/alerts', { params: { limit, include_acknowledged: includeAcknowledged, severity } }),
+  acknowledgeAlert: (id: number, notes?: string) =>
+    api.post(`/dashboard/alerts/${id}/acknowledge`, { notes }),
+  resolveAlert: (id: number, resolution_notes?: string) =>
+    api.post(`/dashboard/alerts/${id}/resolve`, { resolution_notes }),
+  escalateAlert: (id: number, reason?: string) =>
+    api.post(`/dashboard/alerts/${id}/escalate`, { reason }),
+  triggerPanic: (patient_id: number) =>
+    api.post('/dashboard/alerts/panic', { patient_id }),
   // Role-specific dashboards
   getDoctorDashboard: () => api.get<DoctorDashboardData>('/dashboard/doctor'),
   getNurseDashboard: () => api.get<NurseDashboardData>('/dashboard/nurse'),
@@ -97,6 +106,16 @@ export const dashboardAPI = {
   getPatientDashboard: () => api.get<PatientDashboardData>('/dashboard/patient'),
   getCaregiverDashboard: () => api.get<CaregiverDashboardData>('/dashboard/caregiver'),
   getHospitalAdminDashboard: () => api.get<HospitalAdminDashboardData>('/dashboard/hospital-admin'),
+};
+
+// ─── In-App Notifications ───
+export const notificationsAPI = {
+  list: (params?: { unread_only?: boolean; limit?: number }) =>
+    api.get<{ notifications: InAppNotification[]; unread_count: number; total: number }>('/notifications', { params }),
+  getUnreadCount: () => api.get<{ unread_count: number }>('/notifications/unread-count'),
+  markRead: (id: number) => api.put(`/notifications/${id}/read`),
+  markAllRead: () => api.put('/notifications/read-all'),
+  delete: (id: number) => api.delete(`/notifications/${id}`),
 };
 
 // ─── Hospitals ───
@@ -178,9 +197,11 @@ export const ratingsAPI = {
   getDoctorSummary: (doctorId: number) => api.get<DoctorRatingSummary>(`/ratings/doctor/${doctorId}/summary`),
 };
 
-// ─── Audit ───
+// ─── Audit Trail ───
 export const auditAPI = {
   getLogs: (params?: any) => api.get<AuditLogEntry[]>('/audit', { params }),
+  getSummary: () => api.get<{ total_events: number; events_today: number; emergency_alerts_logged: number; action_distribution: Record<string, number>; top_users: any[] }>('/audit/summary'),
+  getExportUrl: () => '/api/audit/export',
 };
 
 // ─── Documents ───

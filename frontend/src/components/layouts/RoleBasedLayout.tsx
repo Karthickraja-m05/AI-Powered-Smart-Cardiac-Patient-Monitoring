@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/authStore';
 import type { UserRole } from '../../types';
 import ThemeToggle from '../common/ThemeToggle';
+import NotificationCenter from '../common/NotificationCenter';
+import { AlertOctagon, ArrowRight, ShieldAlert } from 'lucide-react';
 
 interface LayoutConfig {
   title: string;
@@ -29,6 +31,7 @@ const layoutConfigs: Record<UserRole, LayoutConfig> = {
       { path: '/', icon: '📊', label: 'Dashboard' },
       { path: '/patients', icon: '👥', label: 'All Patients' },
       { path: '/monitoring', icon: '💓', label: 'Live Monitoring' },
+      { path: '/appointments', icon: '📅', label: 'Appointments' },
       { path: '/hospitals', icon: '🏥', label: 'Hospitals' },
       { path: '/departments', icon: '🏢', label: 'Departments' },
       { path: '/users', icon: '👤', label: 'Manage Users' },
@@ -49,8 +52,10 @@ const layoutConfigs: Record<UserRole, LayoutConfig> = {
       { path: '/', icon: '📊', label: 'Dashboard' },
       { path: '/patients', icon: '👥', label: 'Patients' },
       { path: '/monitoring', icon: '💓', label: 'Live Monitoring' },
+      { path: '/appointments', icon: '📅', label: 'Appointments' },
       { path: '/departments', icon: '🏢', label: 'Departments' },
       { path: '/shifts', icon: '🕐', label: 'Shift Management' },
+      { path: '/audit', icon: '📋', label: 'Audit Logs' },
       { path: '/users', icon: '👤', label: 'Staff' },
     ],
   },
@@ -66,6 +71,7 @@ const layoutConfigs: Record<UserRole, LayoutConfig> = {
       { path: '/', icon: '📊', label: 'My Dashboard' },
       { path: '/patients', icon: '👥', label: 'My Patients' },
       { path: '/monitoring', icon: '💓', label: 'Live Monitoring' },
+      { path: '/appointments', icon: '📅', label: 'My Consultations' },
       { path: '/availability', icon: '🟢', label: 'My Availability' },
       { path: '/shifts', icon: '🕐', label: 'My Shifts' },
     ],
@@ -97,8 +103,8 @@ const layoutConfigs: Record<UserRole, LayoutConfig> = {
       { path: '/', icon: '📊', label: 'Dashboard' },
       { path: '/patients', icon: '👥', label: 'Patients' },
       { path: '/register', icon: '📝', label: 'Register Patient' },
-      { path: '/visitors', icon: '🎫', label: 'Visitor Pass' },
       { path: '/appointments', icon: '📅', label: 'Appointments' },
+      { path: '/visitors', icon: '🎫', label: 'Visitor Pass' },
     ],
   },
   patient: {
@@ -136,11 +142,83 @@ interface Props {
 export default function RoleBasedLayout({ children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeStickyAlert, setActiveStickyAlert] = useState<any | null>(null);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
+  const wsRef = useRef<WebSocket | null>(null);
+
   const role = (user?.role || 'patient') as UserRole;
   const config = layoutConfigs[role] || layoutConfigs.patient;
+
+  // Real-time WebSocket connection to hospital broadcast bus
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+    let isCancelled = false;
+
+    const connectWebSocket = () => {
+      if (isCancelled) return;
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/api/ws/live?user_id=${user?.id || ''}`;
+        
+        ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          console.log('[CareBridge WS] Connected to live hospital channel');
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            const { type, payload } = data;
+
+            if (type === 'emergency_alert') {
+              setActiveStickyAlert(payload);
+              window.dispatchEvent(new CustomEvent('carebridge:emergency_alert', { detail: payload }));
+            } else if (type === 'alert_acknowledged' || type === 'alert_resolved') {
+              if (activeStickyAlert && activeStickyAlert.id === payload.id) {
+                setActiveStickyAlert(null);
+              }
+              window.dispatchEvent(new CustomEvent('carebridge:alert_updated', { detail: payload }));
+            } else if (type === 'appointment_created' || type === 'appointment_updated') {
+              window.dispatchEvent(new CustomEvent('carebridge:appointment_synced', { detail: payload }));
+              window.dispatchEvent(new CustomEvent('carebridge:notification', { detail: payload }));
+            } else if (type === 'audit_logged') {
+              window.dispatchEvent(new CustomEvent('carebridge:audit_logged', { detail: payload }));
+            }
+          } catch (e) {
+            console.error('[CareBridge WS] Parse error:', e);
+          }
+        };
+
+        ws.onclose = () => {
+          if (!isCancelled) {
+            reconnectTimeout = setTimeout(connectWebSocket, 4000);
+          }
+        };
+
+        ws.onerror = (err) => {
+          console.warn('[CareBridge WS] Connection error (falling back to automatic retry)');
+        };
+      } catch (err) {
+        if (!isCancelled) {
+          reconnectTimeout = setTimeout(connectWebSocket, 4000);
+        }
+      }
+    };
+
+    connectWebSocket();
+
+    return () => {
+      isCancelled = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
+    };
+  }, [user?.id]);
 
   const handleLogout = () => {
     logout();
@@ -258,6 +336,27 @@ export default function RoleBasedLayout({ children }: Props) {
 
       {/* ── Main Content Area with Top Navigation Bar ── */}
       <main className="flex-1 overflow-y-auto relative z-10 flex flex-col">
+        {/* Sticky Emergency Banner if critical alert is broadcasting */}
+        {activeStickyAlert && (
+          <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-4 py-2.5 flex items-center justify-between shadow-lg shadow-red-950/40 z-40 border-b border-red-500/50 animate-pulse">
+            <div className="flex items-center gap-2.5">
+              <ShieldAlert className="w-5 h-5 flex-shrink-0 text-white" />
+              <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
+                {activeStickyAlert.severity || 'CRITICAL'} ALERT
+              </span>
+              <span className="text-xs font-medium">
+                <strong>{activeStickyAlert.patient_name || 'Patient'}</strong> ({activeStickyAlert.ward || 'Ward'} • {activeStickyAlert.bed || 'Bed'}): {activeStickyAlert.title}
+              </span>
+            </div>
+            <button
+              onClick={() => setActiveStickyAlert(null)}
+              className="text-xs font-semibold underline hover:text-white/80 transition-colors ml-4"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Top Header Navigation Bar */}
         <header className="sticky top-0 z-30 px-4 lg:px-6 py-3 border-b border-white/5 bg-surface-900/60 backdrop-blur-xl flex items-center justify-between gap-4 transition-all">
           {/* Left: Mobile trigger & Medical Disclaimer */}
@@ -276,8 +375,11 @@ export default function RoleBasedLayout({ children }: Props) {
             </div>
           </div>
 
-          {/* Right: Theme Toggle & User Status Indicator */}
+          {/* Right: Notification Center, Theme Toggle & User Status Indicator */}
           <div className="flex items-center gap-3 flex-shrink-0">
+            {/* 🔔 In-App Clinical Notification Center & Sound Alerts */}
+            <NotificationCenter />
+
             {/* ☀️/🌙 Animated Theme Toggle Switch */}
             <ThemeToggle />
 

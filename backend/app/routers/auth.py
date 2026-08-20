@@ -2,17 +2,16 @@
 """
 Auth Router
 ===========
-JWT authentication, registration, profile management.
+JWT authentication, registration, profile management, and security audit logging.
 """
 
 from datetime import datetime
-# pyrefly: ignore [missing-import]
-from fastapi import APIRouter, Depends, HTTPException, status
-# pyrefly: ignore [missing-import]
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.user import User, UserRole
+from ..models.audit_log import AuditAction
 from ..schemas.user_schema import (
     LoginRequest, TokenResponse, RegisterRequest,
     UserResponse, UserUpdate, PasswordChangeRequest,
@@ -21,22 +20,44 @@ from ..services.auth_service import (
     hash_password, verify_password, create_access_token,
     authenticate_user, get_current_user, require_roles,
 )
+from ..services.audit_service import log_audit_event
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
-    """Authenticate user and return JWT token."""
+def login(request: LoginRequest, req: Request = None, db: Session = Depends(get_db)):
+    """Authenticate user, return JWT token, and record secure audit log."""
     user = authenticate_user(db, request.username, request.password)
     if not user:
+        # Log failed attempt
+        log_audit_event(
+            db=db,
+            action=AuditAction.LOGIN,
+            entity_type="security",
+            username=request.username,
+            description=f"Failed login attempt for username: {request.username}",
+            ip_address=req.client.host if req and req.client else "127.0.0.1",
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
         )
+
     # Update last login
     user.last_login = datetime.utcnow()
     db.commit()
+
+    # Log successful login
+    log_audit_event(
+        db=db,
+        action=AuditAction.LOGIN,
+        entity_type="user",
+        entity_id=user.id,
+        user=user,
+        description=f"User {user.full_name} ({user.role.value}) logged in successfully.",
+        ip_address=req.client.host if req and req.client else "127.0.0.1",
+    )
 
     token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     return TokenResponse(
@@ -51,7 +72,7 @@ def register(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Register a new user (admin/doctor only)."""
+    """Register a new user (admin only)."""
     if current_user.role not in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
         raise HTTPException(status_code=403, detail="Only admins can register users")
 
@@ -78,6 +99,17 @@ def register(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    log_audit_event(
+        db=db,
+        action=AuditAction.USER_MANAGE,
+        entity_type="user",
+        entity_id=user.id,
+        user=current_user,
+        description=f"Admin {current_user.full_name} created new staff account: {user.full_name} (Role: {user.role.value}, Dept: {user.department or 'N/A'}).",
+        new_value={"username": user.username, "role": user.role.value, "department": user.department},
+    )
+
     return UserResponse.model_validate(user)
 
 
@@ -99,6 +131,17 @@ def update_profile(
         setattr(current_user, key, value)
     db.commit()
     db.refresh(current_user)
+
+    log_audit_event(
+        db=db,
+        action=AuditAction.UPDATE,
+        entity_type="user",
+        entity_id=current_user.id,
+        user=current_user,
+        description=f"User {current_user.full_name} updated their profile settings.",
+        new_value=update_data,
+    )
+
     return UserResponse.model_validate(current_user)
 
 
@@ -113,6 +156,16 @@ def change_password(
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.hashed_password = hash_password(request.new_password)
     db.commit()
+
+    log_audit_event(
+        db=db,
+        action=AuditAction.UPDATE,
+        entity_type="security",
+        entity_id=current_user.id,
+        user=current_user,
+        description=f"Password changed for user {current_user.username}.",
+    )
+
     return {"message": "Password updated successfully"}
 
 

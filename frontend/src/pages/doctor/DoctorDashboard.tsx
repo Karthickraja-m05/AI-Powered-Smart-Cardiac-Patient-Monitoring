@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import { dashboardAPI } from '../../services/api';
-import type { DoctorDashboardData } from '../../types';
+import { dashboardAPI, appointmentsAPI } from '../../services/api';
+import type { DoctorDashboardData, Appointment } from '../../types';
+import toast from 'react-hot-toast';
+import {
+  Calendar, CheckCircle, AlertTriangle, ShieldAlert, Clock, User,
+  Heart, Activity, ArrowRight, Play, Check, X, RefreshCw, Eye
+} from 'lucide-react';
 
-const fadeIn = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
+const fadeIn = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
 const statusBadges: Record<string, { label: string; dot: string; bg: string; text: string }> = {
   available: { label: 'Available for Consults', dot: 'bg-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-400' },
@@ -14,72 +19,112 @@ const statusBadges: Record<string, { label: string; dot: string; bg: string; tex
   emergency: { label: 'Emergency Duty', dot: 'bg-red-500', bg: 'bg-red-500/15 border-red-500/30', text: 'text-red-400' },
   meeting: { label: 'In Meeting', dot: 'bg-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-400' },
   off_duty: { label: 'Off Duty', dot: 'bg-slate-400', bg: 'bg-slate-500/10 border-slate-500/20', text: 'text-slate-400' },
-  vacation: { label: 'On Leave', dot: 'bg-purple-400', bg: 'bg-purple-500/10 border-purple-500/20', text: 'text-purple-400' },
 };
-
-const mockInpatients = [
-  { id: 1, name: 'Ramesh Kumar', patient_uid: 'PAT-2026-001', age: 62, gender: 'Male', ward: 'Cardiac ICU', room: 'Bed ICU-03', risk_level: 'critical', risk_score: 91, heart_rate: 118, spo2: 92, bp: '165/102', primary_diagnosis: 'Acute Myocardial Infarction', admission_time: 'Today, 04:15 AM' },
-  { id: 2, name: 'Ananya Sharma', patient_uid: 'PAT-2026-004', age: 48, gender: 'Female', ward: 'CCU Wing A', room: 'Room 204-B', risk_level: 'high', risk_score: 74, heart_rate: 96, spo2: 95, bp: '142/90', primary_diagnosis: 'Unstable Angina & Arrhythmia', admission_time: 'Yesterday, 08:30 PM' },
-  { id: 3, name: 'Vikram Sethi', patient_uid: 'PAT-2026-007', age: 55, gender: 'Male', ward: 'Step-Down CCU', room: 'Room 112', risk_level: 'medium', risk_score: 48, heart_rate: 78, spo2: 98, bp: '128/82', primary_diagnosis: 'Post-PTCA Follow-up', admission_time: '2 days ago' },
-  { id: 4, name: 'Kavita Menon', patient_uid: 'PAT-2026-012', age: 71, gender: 'Female', ward: 'General Ward 2', room: 'Bed 214', risk_level: 'low', risk_score: 22, heart_rate: 72, spo2: 99, bp: '120/78', primary_diagnosis: 'Hypertensive Heart Disease', admission_time: '3 days ago' },
-];
-
-const mockConsultationQueue = [
-  { id: 101, time: '09:30 AM', patient_name: 'Harish Patel', age: 59, type: 'Follow-Up Visit', mode: 'In-Person', status: 'In Waiting', reason: 'Post-discharge Holter monitor review' },
-  { id: 102, time: '10:15 AM', patient_name: 'Sunita Reddy', age: 44, type: 'Initial Cardiac Consult', mode: 'In-Person', status: 'Upcoming', reason: 'Exertional dyspnea & chest tightness' },
-  { id: 103, time: '11:00 AM', patient_name: 'David Joseph', age: 66, type: 'Tele-Consultation', mode: 'Remote Video', status: 'Upcoming', reason: 'Lipid profile & Statin titration review' },
-  { id: 104, time: '11:45 AM', patient_name: 'Meenakshi Sundaram', age: 52, type: 'Emergency Referral', mode: 'In-Person', status: 'Priority', reason: 'Abnormal ECG T-wave inversion' },
-];
-
-const mockClinicalAlerts = [
-  { id: 201, patient_name: 'Ramesh Kumar (ICU-03)', title: 'Sustained Ventricular Tachycardia Alert', severity: 'emergency', time: '12 mins ago', metric: 'HR: 142 bpm • SpO2: 91%' },
-  { id: 202, patient_name: 'Ananya Sharma (Room 204-B)', title: 'Systolic Blood Pressure Spike', severity: 'critical', time: '38 mins ago', metric: 'BP: 178/104 mmHg' },
-  { id: 203, patient_name: 'Vikram Sethi (Room 112)', title: 'Missed Morning Antiplatelet Dose', severity: 'warning', time: '1 hr ago', metric: 'Clopidogrel 75mg' },
-];
-
-const mockActivityLog = [
-  { id: 301, time: '08:45 AM', action: 'Approved Medication', detail: 'Amiodarone IV drip for Ramesh Kumar (ICU-03)' },
-  { id: 302, time: '08:15 AM', action: 'ECG Review Completed', detail: '12-lead ECG signed off for Ananya Sharma — Sinus tachycardia with ST elevation' },
-  { id: 303, time: '07:30 AM', action: 'Morning Rounds Handover', detail: 'Received 8 CCU patient handovers from Dr. Rajesh Kumar' },
-];
 
 export default function DoctorDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [data, setData] = useState<DoctorDashboardData | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('available');
+  const [processingAlertId, setProcessingAlertId] = useState<number | null>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [dashRes, apptRes] = await Promise.all([
+        dashboardAPI.getDoctorDashboard(),
+        appointmentsAPI.list({ doctor_id: user?.id }),
+      ]);
+
+      setData(dashRes.data);
+      if (dashRes.data.availability_status) {
+        setStatus(dashRes.data.availability_status);
+      }
+      setAppointments(apptRes.data || []);
+    } catch (err) {
+      console.warn('Dashboard load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    dashboardAPI.getDoctorDashboard()
-      .then(res => {
-        setData(res.data);
-        if (res.data.availability_status) {
-          setStatus(res.data.availability_status);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
-  }, []);
+    fetchDashboardData();
+
+    // Listen for real-time WebSocket events
+    const handleSync = () => fetchDashboardData();
+    window.addEventListener('carebridge:emergency_alert', handleSync);
+    window.addEventListener('carebridge:alert_updated', handleSync);
+    window.addEventListener('carebridge:appointment_synced', handleSync);
+
+    return () => {
+      window.removeEventListener('carebridge:emergency_alert', handleSync);
+      window.removeEventListener('carebridge:alert_updated', handleSync);
+      window.removeEventListener('carebridge:appointment_synced', handleSync);
+    };
+  }, [user?.id]);
+
+  const handleAcknowledgeAlert = async (alertId: number) => {
+    setProcessingAlertId(alertId);
+    try {
+      await dashboardAPI.acknowledgeAlert(alertId, 'Acknowledged by attending cardiologist from doctor dashboard');
+      toast.success(`Alert #${alertId} acknowledged`);
+      fetchDashboardData();
+    } catch (err) {
+      toast.error('Failed to acknowledge alert');
+    } finally {
+      setProcessingAlertId(null);
+    }
+  };
+
+  const handleResolveAlert = async (alertId: number) => {
+    setProcessingAlertId(alertId);
+    try {
+      await dashboardAPI.resolveAlert(alertId, 'Patient condition evaluated and stabilized under clinical care.');
+      toast.success(`Alert #${alertId} resolved`);
+      fetchDashboardData();
+    } catch (err) {
+      toast.error('Failed to resolve alert');
+    } finally {
+      setProcessingAlertId(null);
+    }
+  };
+
+  const handleUpdateAppointmentStatus = async (apptId: number, newStatus: string) => {
+    try {
+      await appointmentsAPI.update(apptId, { status: newStatus as any });
+      toast.success(`Appointment status updated to ${newStatus}`);
+      fetchDashboardData();
+    } catch (err) {
+      toast.error('Failed to update appointment status');
+    }
+  };
 
   const d = data;
   const currentBadge = statusBadges[status] || statusBadges.available;
-  const patientsList = d?.patients && d.patients.length > 0 ? d.patients : mockInpatients;
-  const alertsList = d?.recent_alerts && d.recent_alerts.length > 0 ? d.recent_alerts : mockClinicalAlerts;
-
-  const totalAppts = d?.todays_appointments || 6;
-  const activePatients = d?.current_patients || patientsList.length;
-  const criticalCount = d?.critical_alerts || alertsList.filter(a => a.severity === 'emergency' || a.severity === 'critical').length;
-  const queueLength = d?.queue_length || mockConsultationQueue.length;
+  const patientsList = d?.patients || [];
+  const alertsList = d?.recent_alerts || [];
+  const queueList = d?.consultation_queue && d.consultation_queue.length > 0 ? d.consultation_queue : (
+    appointments.slice(0, 5).map(a => ({
+      id: a.id,
+      time: new Date(a.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      patient_name: a.patient_name || `Patient #${a.patient_id}`,
+      patient_id: a.patient_id,
+      age: 50,
+      type: a.appointment_type || 'Consultation',
+      mode: 'In-Person',
+      status: a.status,
+      reason: a.reason || 'Cardiac Follow-up',
+    }))
+  );
 
   return (
     <div className="space-y-6">
       {/* ── Clinical Header Banner ── */}
       <motion.div
         {...fadeIn}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-surface-900 border border-blue-500/20 p-6 backdrop-blur-xl shadow-2xl"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-surface-900 border border-blue-500/20 p-6 backdrop-blur-xl shadow-2xl"
       >
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -90,22 +135,22 @@ export default function DoctorDashboard() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-bold text-white tracking-tight">
-                  Welcome, Dr. {user?.full_name?.replace(/^Dr\.\s*/i, '') || 'Doctor'}
+                  Welcome, Dr. {user?.full_name?.replace(/^Dr\.\s*/i, '') || 'Priya Sharma'}
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                  {user?.specialization || 'Cardiologist'}
+                  {user?.specialization || 'Cardiology Specialist'}
                 </span>
               </div>
               <p className="text-slate-400 text-xs mt-1 flex items-center gap-2">
                 <span>🏥 Department: <strong className="text-slate-200">{user?.department || 'Cardiology & CCU'}</strong></span>
                 <span>•</span>
-                <span>📅 Today: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <span>📅 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 self-start lg:self-auto">
-            {/* Live Availability Status Chip */}
+            {/* Live Availability Status */}
             <button
               onClick={() => navigate('/availability')}
               className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border ${currentBadge.bg} transition-all duration-200 hover:scale-[1.02] cursor-pointer group`}
@@ -120,13 +165,21 @@ export default function DoctorDashboard() {
               </div>
             </button>
 
-            {/* Quick Shift Badge */}
+            {/* Quick Shift Button */}
             <button
               onClick={() => navigate('/shifts')}
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-800/80 border border-white/10 hover:border-blue-500/30 text-slate-300 hover:text-white transition-all text-xs font-semibold cursor-pointer"
             >
               <span>🕐</span>
               <span>My Shift</span>
+            </button>
+
+            <button
+              onClick={fetchDashboardData}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+              title="Refresh Clinical State"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
@@ -136,169 +189,162 @@ export default function DoctorDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           {
-            label: "Today's Appointments",
-            value: totalAppts,
-            sub: `${queueLength} pending in queue`,
+            label: "Today's Consultations",
+            value: appointments.length || d?.todays_appointments || 4,
+            sub: 'Synchronized with Reception',
             icon: '📅',
-            gradient: 'from-blue-500 to-sky-600',
-            bg: 'bg-blue-500/5',
-            border: 'border-blue-500/20',
-            textColor: 'text-blue-400',
-            onClick: () => navigate('/appointments'),
+            color: 'from-blue-500/20 to-blue-600/5 text-blue-400 border-blue-500/20',
           },
           {
             label: 'Assigned Inpatients',
-            value: activePatients,
-            sub: '4 in ICU / Step-Down',
-            icon: '🛏️',
-            gradient: 'from-sky-500 to-teal-600',
-            bg: 'bg-sky-500/5',
-            border: 'border-sky-500/20',
-            textColor: 'text-sky-400',
-            onClick: () => navigate('/patients'),
+            value: patientsList.length || d?.current_patients || 6,
+            sub: 'Under Active CCU Monitoring',
+            icon: '👥',
+            color: 'from-indigo-500/20 to-indigo-600/5 text-indigo-400 border-indigo-500/20',
           },
           {
-            label: 'Critical Vitals Alerts',
-            value: criticalCount,
-            sub: criticalCount > 0 ? 'Requires immediate review' : 'All vitals stable',
+            label: 'Emergency / Critical Alerts',
+            value: d?.critical_alerts || alertsList.length || 1,
+            sub: 'Immediate Triage Required',
             icon: '🚨',
-            gradient: 'from-rose-500 to-red-600',
-            bg: 'bg-rose-500/5',
-            border: 'border-rose-500/20',
-            textColor: 'text-rose-400',
-            onClick: () => navigate('/monitoring'),
+            color: 'from-red-500/20 to-red-600/5 text-rose-400 border-red-500/30 animate-pulse',
           },
           {
             label: 'Consultation Queue',
-            value: queueLength,
-            sub: 'Next: Harish Patel (09:30 AM)',
+            value: queueList.length,
+            sub: 'Waiting in OPD / Telehealth',
             icon: '⏱️',
-            gradient: 'from-indigo-500 to-violet-600',
-            bg: 'bg-indigo-500/5',
-            border: 'border-indigo-500/20',
-            textColor: 'text-indigo-400',
-            onClick: () => navigate('/appointments'),
+            color: 'from-teal-500/20 to-teal-600/5 text-teal-400 border-teal-500/20',
           },
-        ].map((kpi, i) => (
+        ].map((kpi, idx) => (
           <motion.div
-            key={kpi.label}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            onClick={kpi.onClick}
-            className={`${kpi.bg} border ${kpi.border} rounded-2xl p-4.5 hover:border-white/20 transition-all duration-200 cursor-pointer group relative overflow-hidden`}
+            key={idx}
+            {...fadeIn}
+            transition={{ delay: idx * 0.05 }}
+            className={`p-4.5 rounded-2xl bg-gradient-to-br ${kpi.color} border backdrop-blur-sm shadow-lg`}
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className={`w-10 h-10 rounded-xl bg-gradient-to-br ${kpi.gradient} flex items-center justify-center text-lg shadow-lg group-hover:scale-110 transition-transform`}>
-                {kpi.icon}
-              </span>
-              <span className="text-xs text-slate-500 group-hover:text-slate-300 transition-colors">View →</span>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-400 font-medium">{kpi.label}</p>
+              <span className="text-lg">{kpi.icon}</span>
             </div>
-            <p className="text-2xl font-bold text-white tracking-tight">{kpi.value}</p>
-            <p className={`text-xs font-semibold ${kpi.textColor} mt-1`}>{kpi.label}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5 truncate">{kpi.sub}</p>
+            <h3 className="text-2xl font-bold text-white mt-1">{kpi.value}</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">{kpi.sub}</p>
           </motion.div>
         ))}
       </div>
 
-      {/* ── Main Clinical Grid (2 Columns) ── */}
+      {/* ── Main Two-Column Clinical Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Left 2 Columns: Patients & Critical Alerts ── */}
+        {/* Left Column (2 Cols): Emergency Alerts & Inpatients Roster */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Active Clinical Alerts Feed */}
+          {/* Active Clinical Emergency Alerts */}
           <motion.div
             {...fadeIn}
             transition={{ delay: 0.2 }}
-            className="bg-surface-800/60 backdrop-blur-sm border border-rose-500/20 rounded-2xl p-5 shadow-xl"
+            className="bg-slate-900/80 backdrop-blur-xl border border-red-500/30 rounded-3xl p-5 shadow-xl shadow-red-950/20"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 text-sm">
-                  🔔
-                </span>
+                <div className="p-2 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
                 <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    Active Clinical Alerts & ECG Telemetry
-                    {alertsList.length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                        {alertsList.length} Active
-                      </span>
-                    )}
-                  </h2>
-                  <p className="text-xs text-slate-400">Continuous AI patient risk monitoring & vital threshold triggers</p>
+                  <h2 className="text-base font-bold text-white">Critical & Emergency Alerts</h2>
+                  <p className="text-xs text-slate-400">Direct multi-channel triage and automated routing</p>
                 </div>
               </div>
-              <button
-                onClick={() => navigate('/monitoring')}
-                className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors"
-              >
-                Live Telemetry →
-              </button>
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                {alertsList.length} Active
+              </span>
             </div>
 
             <div className="space-y-3">
-              {alertsList.map((alert: any) => {
-                const isEmergency = alert.severity === 'emergency';
-                const isCritical = alert.severity === 'critical';
-                return (
-                  <div
-                    key={alert.id}
-                    className={`p-3.5 rounded-xl border transition-all ${
-                      isEmergency
-                        ? 'bg-red-500/10 border-red-500/30 hover:border-red-500/50'
-                        : isCritical
-                        ? 'bg-orange-500/10 border-orange-500/30 hover:border-orange-500/50'
-                        : 'bg-amber-500/10 border-amber-500/30 hover:border-amber-500/50'
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-start gap-2.5">
-                        <span className="text-base mt-0.5">{isEmergency ? '🚨' : isCritical ? '⚠️' : '⚡'}</span>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-bold text-white">{alert.title}</p>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
-                              isEmergency ? 'bg-red-500/20 text-red-400' : isCritical ? 'bg-orange-500/20 text-orange-400' : 'bg-amber-500/20 text-amber-400'
-                            }`}>
-                              {alert.severity}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-300 mt-0.5 font-medium">{alert.patient_name || alert.message}</p>
-                          {alert.metric && (
-                            <p className="text-xs text-rose-300/90 font-mono mt-1 bg-black/20 px-2 py-0.5 rounded inline-block">
-                              Telemetry: {alert.metric}
+              {alertsList.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  <CheckCircle className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
+                  No unacknowledged emergency alerts. All patients stable.
+                </div>
+              ) : (
+                alertsList.map((alert: any) => {
+                  const isEmergency = alert.severity === 'emergency' || alert.severity === 'critical';
+                  return (
+                    <div
+                      key={alert.id}
+                      className={`p-4 rounded-2xl border transition-all ${
+                        isEmergency
+                          ? 'bg-red-500/10 border-red-500/40 hover:border-red-500/60'
+                          : 'bg-amber-500/10 border-amber-500/30'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-xl mt-0.5">{isEmergency ? '🚨' : '⚠️'}</span>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-bold text-white">{alert.title}</p>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
+                                isEmergency ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              }`}>
+                                {alert.severity}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-300 mt-1 font-medium">
+                              Patient: <strong className="text-white">{alert.patient_name}</strong> • {alert.message}
                             </p>
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Triggered: {alert.triggered_at ? new Date(alert.triggered_at).toLocaleTimeString() : 'Recently'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Fast Action Buttons */}
+                        <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                          {!alert.is_acknowledged ? (
+                            <button
+                              disabled={processingAlertId === alert.id}
+                              onClick={() => handleAcknowledgeAlert(alert.id)}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-950/40 flex items-center gap-1.5 transition-all disabled:opacity-50"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Acknowledge
+                            </button>
+                          ) : (
+                            <button
+                              disabled={processingAlertId === alert.id}
+                              onClick={() => handleResolveAlert(alert.id)}
+                              className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg shadow-teal-950/40 flex items-center gap-1.5 transition-all disabled:opacity-50"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              Resolve
+                            </button>
                           )}
+                          <button
+                            onClick={() => navigate(`/patients/${alert.patient_id}`)}
+                            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all"
+                            title="Inspect Patient EMR"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        <span className="text-[11px] text-slate-400 mr-1">{alert.time || 'Active'}</span>
-                        <button
-                          onClick={() => navigate('/monitoring')}
-                          className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all cursor-pointer"
-                        >
-                          Review Vitals
-                        </button>
-                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </motion.div>
 
-          {/* Assigned Inpatients Roster */}
+          {/* Assigned Inpatients Roster with Live Telemetry */}
           <motion.div
             {...fadeIn}
             transition={{ delay: 0.3 }}
-            className="bg-surface-800/60 backdrop-blur-sm border border-white/[0.06] rounded-2xl p-5 shadow-xl"
+            className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-5 shadow-xl"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-sm">
-                  👥
-                </span>
+                <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <Heart className="w-5 h-5" />
+                </div>
                 <div>
                   <h2 className="text-base font-bold text-white">Assigned Inpatients Roster</h2>
                   <p className="text-xs text-slate-400">Patients admitted under your primary cardiology care</p>
@@ -321,10 +367,10 @@ export default function DoctorDashboard() {
                   <div
                     key={patient.id}
                     onClick={() => navigate(`/patients/${patient.id}`)}
-                    className="p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] hover:border-blue-500/30 transition-all cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-3"
+                    className="p-3.5 rounded-2xl bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 hover:border-blue-500/40 transition-all cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0">
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0">
                         {patient.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || 'PT'}
                       </div>
                       <div>
@@ -348,13 +394,13 @@ export default function DoctorDashboard() {
                     {/* Vitals & Risk Badge */}
                     <div className="flex items-center gap-3 self-end md:self-center">
                       {patient.heart_rate && (
-                        <div className="text-right hidden sm:block">
-                          <p className="text-xs font-mono font-bold text-slate-200">{patient.heart_rate} bpm</p>
+                        <div className="text-right hidden sm:block font-mono">
+                          <p className="text-xs font-bold text-slate-200">{patient.heart_rate} bpm</p>
                           <p className="text-[10px] text-slate-400">SpO2: {patient.spo2}%</p>
                         </div>
                       )}
 
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                      <span className={`px-2.5 py-1 rounded-xl text-xs font-bold uppercase tracking-wider ${
                         isCrit ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                         isHigh ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
                         isMed ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
@@ -374,118 +420,138 @@ export default function DoctorDashboard() {
           </motion.div>
         </div>
 
-        {/* ── Right Column: Consultation Queue & Recent Actions ── */}
+        {/* Right Column: Today's Consultation Schedule & Queue */}
         <div className="space-y-6">
-          {/* Today's Consultation Schedule */}
+          {/* Today's Consultation Schedule (Synced live with Reception) */}
           <motion.div
             {...fadeIn}
             transition={{ delay: 0.25 }}
-            className="bg-surface-800/60 backdrop-blur-sm border border-white/[0.06] rounded-2xl p-5 shadow-xl"
+            className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-5 shadow-xl"
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">📋</span>
-                <h2 className="text-base font-bold text-white">Consultation Queue</h2>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white">Consultation Queue</h2>
+                  <p className="text-xs text-slate-400">Today's booked appointments</p>
+                </div>
               </div>
               <button
                 onClick={() => navigate('/appointments')}
                 className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
               >
-                Schedule →
+                Manage ({appointments.length}) →
               </button>
             </div>
 
             <div className="space-y-3">
-              {mockConsultationQueue.map((appt) => (
-                <div
-                  key={appt.id}
-                  className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-blue-500/20 transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">
-                      {appt.time}
-                    </span>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                      appt.status === 'In Waiting' ? 'bg-amber-500/20 text-amber-300' :
-                      appt.status === 'Priority' ? 'bg-red-500/20 text-red-300' :
-                      'bg-slate-500/20 text-slate-300'
-                    }`}>
-                      {appt.status}
-                    </span>
-                  </div>
-                  <p className="text-sm font-semibold text-white mt-1.5">{appt.patient_name} <span className="text-xs text-slate-400 font-normal">({appt.age}y)</span></p>
-                  <p className="text-xs text-slate-400 mt-0.5">{appt.reason}</p>
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/[0.04] text-[11px] text-slate-500">
-                    <span>{appt.type}</span>
-                    <span className="text-slate-400">📍 {appt.mode}</span>
-                  </div>
+              {queueList.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 text-xs">
+                  No appointments booked for today yet.
                 </div>
-              ))}
+              ) : (
+                queueList.map((appt: any) => (
+                  <div
+                    key={appt.id}
+                    className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/60 hover:border-blue-500/30 transition-all space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg">
+                        {appt.time}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                        appt.status === 'in_progress' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
+                        appt.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
+                        appt.status === 'cancelled' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' :
+                        'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                      }`}>
+                        {appt.status?.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-white">{appt.patient_name}</p>
+                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{appt.reason || 'Cardiac consultation'}</p>
+                    </div>
+
+                    {/* Quick Consultation Status Action Controls */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-700/60 text-xs">
+                      <span className="text-slate-500 text-[11px]">{appt.type}</span>
+                      <div className="flex items-center gap-1.5">
+                        {appt.status !== 'completed' && (
+                          <>
+                            {appt.status !== 'in_progress' ? (
+                              <button
+                                onClick={() => handleUpdateAppointmentStatus(appt.id, 'in_progress')}
+                                className="px-2 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                              >
+                                <Play className="w-3 h-3" /> Start
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleUpdateAppointmentStatus(appt.id, 'completed')}
+                                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                              >
+                                <Check className="w-3 h-3" /> Complete
+                              </button>
+                            )}
+                          </>
+                        )}
+                        <button
+                          onClick={() => navigate(`/patients/${appt.patient_id}`)}
+                          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium border border-slate-700"
+                        >
+                          EMR
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </motion.div>
 
-          {/* Recent Clinical Orders & Activity Stream */}
+          {/* Quick Doctor Dispatch Actions */}
           <motion.div
             {...fadeIn}
             transition={{ delay: 0.35 }}
-            className="bg-surface-800/60 backdrop-blur-sm border border-white/[0.06] rounded-2xl p-5 shadow-xl"
+            className="bg-gradient-to-br from-blue-900/30 to-slate-900/80 border border-blue-500/20 rounded-3xl p-5 shadow-xl"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-lg">⚡</span>
-              <h2 className="text-base font-bold text-white">Recent Clinical Activity</h2>
-            </div>
-
-            <div className="relative pl-4 space-y-3.5 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-white/10">
-              {mockActivityLog.map((log) => (
-                <div key={log.id} className="relative">
-                  <div className="absolute -left-[19px] top-1.5 w-2 h-2 rounded-full bg-blue-400 ring-4 ring-surface-900" />
-                  <p className="text-xs font-semibold text-blue-300">{log.action}</p>
-                  <p className="text-xs text-slate-300 mt-0.5">{log.detail}</p>
-                  <p className="text-[10px] text-slate-500 mt-1">🕒 {log.time}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Fast Clinical Dispatcher */}
-          <motion.div
-            {...fadeIn}
-            transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-blue-900/30 to-surface-800/60 border border-blue-500/20 rounded-2xl p-4.5"
-          >
-            <p className="text-xs font-bold text-white uppercase tracking-wider mb-2.5">⚡ Fast Actions</p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-xs font-bold text-white uppercase tracking-wider mb-3">⚡ Clinical Fast Actions</p>
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => navigate('/monitoring')}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-blue-500/20 border border-white/5 hover:border-blue-500/30 text-left transition-all cursor-pointer"
+                className="p-3 rounded-2xl bg-slate-800/60 hover:bg-blue-500/20 border border-slate-700 hover:border-blue-500/40 text-left transition-all cursor-pointer group"
               >
-                <span className="text-lg block">💓</span>
-                <span className="text-xs font-semibold text-white block mt-1">Live Vitals</span>
-                <span className="text-[10px] text-slate-400">ECG & telemetry</span>
+                <span className="text-xl block">💓</span>
+                <span className="text-xs font-bold text-white block mt-1 group-hover:text-blue-300 transition-colors">Live Vitals</span>
+                <span className="text-[10px] text-slate-400">Continuous telemetry</span>
               </button>
               <button
                 onClick={() => navigate('/availability')}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/5 hover:border-emerald-500/30 text-left transition-all cursor-pointer"
+                className="p-3 rounded-2xl bg-slate-800/60 hover:bg-emerald-500/20 border border-slate-700 hover:border-emerald-500/40 text-left transition-all cursor-pointer group"
               >
-                <span className="text-lg block">🟢</span>
-                <span className="text-xs font-semibold text-white block mt-1">Availability</span>
+                <span className="text-xl block">🟢</span>
+                <span className="text-xs font-bold text-white block mt-1 group-hover:text-emerald-300 transition-colors">Availability</span>
                 <span className="text-[10px] text-slate-400">Set duty status</span>
               </button>
               <button
                 onClick={() => navigate('/shifts')}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-indigo-500/20 border border-white/5 hover:border-indigo-500/30 text-left transition-all cursor-pointer"
+                className="p-3 rounded-2xl bg-slate-800/60 hover:bg-indigo-500/20 border border-slate-700 hover:border-indigo-500/40 text-left transition-all cursor-pointer group"
               >
-                <span className="text-lg block">🕐</span>
-                <span className="text-xs font-semibold text-white block mt-1">My Shifts</span>
+                <span className="text-xl block">🕐</span>
+                <span className="text-xs font-bold text-white block mt-1 group-hover:text-indigo-300 transition-colors">My Shifts</span>
                 <span className="text-[10px] text-slate-400">Roster & Wards</span>
               </button>
               <button
                 onClick={() => navigate('/appointments')}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-sky-500/20 border border-white/5 hover:border-sky-500/30 text-left transition-all cursor-pointer"
+                className="p-3 rounded-2xl bg-slate-800/60 hover:bg-sky-500/20 border border-slate-700 hover:border-sky-500/40 text-left transition-all cursor-pointer group"
               >
-                <span className="text-lg block">📅</span>
-                <span className="text-xs font-semibold text-white block mt-1">Calendar</span>
-                <span className="text-[10px] text-slate-400">Slots & Booking</span>
+                <span className="text-xl block">📅</span>
+                <span className="text-xs font-bold text-white block mt-1 group-hover:text-sky-300 transition-colors">Appointments</span>
+                <span className="text-[10px] text-slate-400">Booking & queue</span>
               </button>
             </div>
           </motion.div>

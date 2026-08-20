@@ -2,26 +2,27 @@
 """
 Patient Router
 ==============
-Full CRUD with search, filtering, pagination, and file uploads.
+Full CRUD with search, filtering, pagination, file uploads,
+audit logging, and real-time dashboard event triggers.
 """
 
 from datetime import datetime
 from typing import Optional
-# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
-# pyrefly: ignore [missing-import]
 from sqlalchemy import or_
 
 from ..database import get_db
 from ..models.user import User, UserRole
 from ..models.patient import Patient, PatientStatus
+from ..models.audit_log import AuditAction
 from ..schemas.patient_schema import (
     PatientCreate, PatientUpdate, PatientResponse, PatientListResponse,
 )
 from ..services.auth_service import get_current_user
 from ..services.load_balancer_service import DoctorLoadBalancer
+from ..services.audit_service import log_audit_event
+from ..services.websocket_manager import trigger_background_broadcast
 
 router = APIRouter(prefix="/api/patients", tags=["Patients"])
 
@@ -33,24 +34,27 @@ def _generate_patient_uid(db: Session) -> str:
 
 
 @router.post("", response_model=PatientResponse, status_code=201)
+@router.post("/", response_model=PatientResponse, status_code=201, include_in_schema=False)
 def create_patient(
     data: PatientCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new patient record."""
+    """Create a new patient record, auto-assign doctor, and log audit trail."""
     # Compute BMI if height and weight provided
     bmi = None
     if data.height_cm and data.weight_kg:
         height_m = data.height_cm / 100
         bmi = round(data.weight_kg / (height_m ** 2), 1)
 
+    uid = _generate_patient_uid(db)
     patient = Patient(
-        patient_uid=_generate_patient_uid(db),
+        patient_uid=uid,
         **data.model_dump(),
         bmi=bmi,
         status=PatientStatus.ADMITTED,
         admission_date=datetime.utcnow(),
+        created_at=datetime.utcnow(),
     )
     db.add(patient)
     db.commit()
@@ -71,63 +75,103 @@ def create_patient(
             )
             db.refresh(patient)
         except (ValueError, Exception):
-            # Auto-assign is best-effort; don't fail patient creation
             pass
+
+    # Log to audit trail
+    log_audit_event(
+        db=db,
+        action=AuditAction.CREATE,
+        entity_type="patient",
+        entity_id=patient.id,
+        user=current_user,
+        description=f"New patient registered: {patient.full_name} ({patient.patient_uid}) by {current_user.full_name} ({current_user.role.value}). Ward: {patient.ward or 'General'}, Room: {patient.room_number or 'N/A'}.",
+        new_value={"patient_uid": patient.patient_uid, "full_name": patient.full_name, "ward": patient.ward},
+    )
+
+    # Broadcast event
+    trigger_background_broadcast("patient_registered", {
+        "id": patient.id,
+        "patient_uid": patient.patient_uid,
+        "full_name": patient.full_name,
+        "status": patient.status.value if hasattr(patient.status, "value") else str(patient.status),
+        "ward": patient.ward,
+    })
 
     return PatientResponse.model_validate(patient)
 
 
 @router.get("", response_model=PatientListResponse)
+@router.get("/", response_model=PatientListResponse, include_in_schema=False)
 def list_patients(
-    query: Optional[str] = None,
-    ward: Optional[str] = None,
-    status: Optional[str] = None,
-    risk_level: Optional[str] = None,
-    doctor_id: Optional[int] = None,
+    search: Optional[str] = Query(None, description="Search by name, UID, or phone"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    risk_level: Optional[str] = Query(None, description="Filter by risk level"),
+    doctor_id: Optional[int] = Query(None, description="Filter by assigned doctor"),
+    nurse_id: Optional[int] = Query(None, description="Filter by assigned nurse"),
+    hospital_id: Optional[int] = Query(None, description="Filter by hospital"),
+    ward: Optional[str] = Query(None, description="Filter by ward"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    sort_by: str = Query("created_at", description="Sort field"),
+    sort_desc: bool = Query(True, description="Sort descending"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """List patients with search, filtering, and pagination."""
-    q = db.query(Patient)
+    query = db.query(Patient)
 
-    # Search by name, patient UID, phone, bed number
-    if query:
-        search = f"%{query}%"
-        q = q.filter(or_(
-            Patient.first_name.ilike(search),
-            Patient.last_name.ilike(search),
-            Patient.patient_uid.ilike(search),
-            Patient.phone.ilike(search),
-            Patient.bed_number.ilike(search),
-        ))
+    # Role-based scoping
+    if current_user.role == UserRole.PATIENT:
+        query = query.filter(Patient.user_id == current_user.id)
+    elif current_user.role == UserRole.CAREGIVER:
+        if current_user.linked_patient_id:
+            query = query.filter(Patient.id == current_user.linked_patient_id)
+        else:
+            return PatientListResponse(total=0, page=page, per_page=per_page, pages=0, patients=[])
 
-    if ward:
-        q = q.filter(Patient.ward == ward)
-    if status:
-        q = q.filter(Patient.status == PatientStatus(status))
-    if risk_level:
-        q = q.filter(Patient.current_risk_level == risk_level)
+    if search:
+        pattern = f"%{search}%"
+        query = query.filter(
+            or_(
+                Patient.first_name.ilike(pattern),
+                Patient.last_name.ilike(pattern),
+                Patient.patient_uid.ilike(pattern),
+                Patient.phone.ilike(pattern),
+            )
+        )
+
+    if status and status != "all":
+        try:
+            query = query.filter(Patient.status == PatientStatus(status))
+        except ValueError:
+            pass
+
+    if risk_level and risk_level != "all":
+        query = query.filter(Patient.current_risk_level == risk_level)
+
     if doctor_id:
-        q = q.filter(Patient.assigned_doctor_id == doctor_id)
+        query = query.filter(Patient.assigned_doctor_id == doctor_id)
+    if nurse_id:
+        query = query.filter(Patient.assigned_nurse_id == nurse_id)
+    if hospital_id:
+        query = query.filter(Patient.hospital_id == hospital_id)
+    if ward and ward != "all":
+        query = query.filter(Patient.ward == ward)
 
-    # Role-based filtering
-    if current_user.role == UserRole.DOCTOR:
-        q = q.filter(Patient.assigned_doctor_id == current_user.id)
-    elif current_user.role == UserRole.NURSE:
-        q = q.filter(Patient.assigned_nurse_id == current_user.id)
-    elif current_user.role == UserRole.PATIENT:
-        q = q.filter(Patient.user_id == current_user.id)
+    total = query.count()
 
-    total = q.count()
-    patients = q.order_by(Patient.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    sort_col = getattr(Patient, sort_by, Patient.created_at)
+    query = query.order_by(sort_col.desc() if sort_desc else sort_col.asc())
+
+    pages = (total + per_page - 1) // per_page
+    patients = query.offset((page - 1) * per_page).limit(per_page).all()
 
     return PatientListResponse(
-        patients=[PatientResponse.model_validate(p) for p in patients],
         total=total,
         page=page,
         per_page=per_page,
+        pages=pages,
+        patients=[PatientResponse.model_validate(p) for p in patients],
     )
 
 
@@ -158,7 +202,6 @@ def update_patient(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    # Recompute BMI if height or weight changed
     height = update_data.get("height_cm", patient.height_cm)
     weight = update_data.get("weight_kg", patient.weight_kg)
     if height and weight:
@@ -167,8 +210,20 @@ def update_patient(
     for key, value in update_data.items():
         setattr(patient, key, value)
 
+    patient.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(patient)
+
+    log_audit_event(
+        db=db,
+        action=AuditAction.UPDATE,
+        entity_type="patient",
+        entity_id=patient.id,
+        user=current_user,
+        description=f"Patient record updated for {patient.full_name} ({patient.patient_uid}) by {current_user.full_name}.",
+        new_value=update_data,
+    )
+
     return PatientResponse.model_validate(patient)
 
 
@@ -186,9 +241,21 @@ def delete_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    p_uid = patient.patient_uid
+    p_name = patient.full_name
     db.delete(patient)
     db.commit()
-    return {"message": f"Patient {patient.patient_uid} deleted"}
+
+    log_audit_event(
+        db=db,
+        action=AuditAction.DELETE,
+        entity_type="patient",
+        entity_id=patient_id,
+        user=current_user,
+        description=f"Patient record DELETED: {p_name} ({p_uid}) by admin {current_user.full_name}.",
+    )
+
+    return {"message": f"Patient {p_uid} deleted successfully"}
 
 
 @router.post("/{patient_id}/discharge", response_model=PatientResponse)
@@ -197,13 +264,31 @@ def discharge_patient(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Discharge a patient."""
+    """Discharge a patient and log audit trail."""
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
     patient.status = PatientStatus.DISCHARGED
     patient.discharge_date = datetime.utcnow()
+    patient.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(patient)
+
+    log_audit_event(
+        db=db,
+        action=AuditAction.DISCHARGE,
+        entity_type="patient",
+        entity_id=patient.id,
+        user=current_user,
+        description=f"Patient {patient.full_name} ({patient.patient_uid}) DISCHARGED by {current_user.full_name} ({current_user.role.value}).",
+    )
+
+    trigger_background_broadcast("patient_discharged", {
+        "id": patient.id,
+        "patient_uid": patient.patient_uid,
+        "full_name": patient.full_name,
+        "discharge_date": patient.discharge_date.isoformat(),
+    })
+
     return PatientResponse.model_validate(patient)
