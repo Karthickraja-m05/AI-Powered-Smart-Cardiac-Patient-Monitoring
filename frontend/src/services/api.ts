@@ -9,7 +9,11 @@ import type {
   PatientDashboardData, CaregiverDashboardData, HospitalAdminDashboardData,
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+let rawBaseUrl = import.meta.env.VITE_API_URL || '/api';
+if (rawBaseUrl.startsWith('http') && !rawBaseUrl.replace(/\/+$/, '').endsWith('/api')) {
+  rawBaseUrl = `${rawBaseUrl.replace(/\/+$/, '')}/api`;
+}
+const API_BASE_URL = rawBaseUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
