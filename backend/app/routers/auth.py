@@ -19,6 +19,7 @@ from ..schemas.user_schema import (
 from ..services.auth_service import (
     hash_password, verify_password, create_access_token,
     authenticate_user, get_current_user, require_roles,
+    validate_password_strength,
 )
 from ..services.audit_service import log_audit_event
 
@@ -26,25 +27,31 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(request: LoginRequest, req: Request = None, db: Session = Depends(get_db)):
-    """Authenticate user, return JWT token, and record secure audit log."""
-    user = authenticate_user(db, request.username, request.password)
+def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
+    """Authenticate user, return JWT token, and record secure audit log with anti-brute-force rate limiting."""
+    client_ip = req.client.host if req and req.client else "127.0.0.1"
+    # Forwarded IP check if behind proxy / load balancer
+    forwarded = req.headers.get("X-Forwarded-For")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+
+    user = authenticate_user(db, request.username, request.password, client_ip=client_ip)
     if not user:
-        # Log failed attempt
+        # Log failed attempt in tamper-evident audit logs
         log_audit_event(
             db=db,
             action=AuditAction.LOGIN,
             entity_type="security",
             username=request.username,
-            description=f"Failed login attempt for username: {request.username}",
-            ip_address=req.client.host if req and req.client else "127.0.0.1",
+            description=f"Failed login attempt for username: {request.username} from IP: {client_ip}",
+            ip_address=client_ip,
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
         )
 
-    # Update last login
+    # Update last login timestamp
     user.last_login = datetime.utcnow()
     db.commit()
 
@@ -56,7 +63,7 @@ def login(request: LoginRequest, req: Request = None, db: Session = Depends(get_
         entity_id=user.id,
         user=user,
         description=f"User {user.full_name} ({user.role.value}) logged in successfully.",
-        ip_address=req.client.host if req and req.client else "127.0.0.1",
+        ip_address=client_ip,
     )
 
     token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
@@ -72,9 +79,14 @@ def register(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Register a new user (admin only)."""
+    """Register a new user (admin only) with strong password enforcement."""
     if current_user.role not in [UserRole.SUPER_ADMIN, UserRole.HOSPITAL_ADMIN]:
         raise HTTPException(status_code=403, detail="Only admins can register users")
+
+    # Enforce strong password complexity policy
+    is_valid, error_msg = validate_password_strength(request.password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=f"Weak password: {error_msg}")
 
     # Check duplicates
     existing = db.query(User).filter(
@@ -151,9 +163,14 @@ def change_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Change current user's password."""
+    """Change current user's password with old-password verification and strong password enforcement."""
     if not verify_password(request.old_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    is_valid, error_msg = validate_password_strength(request.new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=f"Weak new password: {error_msg}")
+
     current_user.hashed_password = hash_password(request.new_password)
     db.commit()
 
